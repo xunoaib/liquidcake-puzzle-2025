@@ -41,8 +41,8 @@ def extract_sequence(
     vert: bool,
 ):
     offset = (1, 0) if vert else (0, 1)
-
     coords = (start, )
+
     p = add(start, offset)
     while p not in STARTS.values():
         coords += (p, )
@@ -51,7 +51,7 @@ def extract_sequence(
     return Sequence(G[start], coords)
 
 
-a, b = sys.stdin.read().strip().split('\n\n')
+a, b, c = sys.stdin.read().strip().split('\n\n')
 
 G = {
     (r, c): v
@@ -64,6 +64,6 @@ COLS = 1 + max(c for _, c in G)
 STARTS = {v: k for k, v in G.items() if v != '.'}
 
 for letter, start in STARTS.items():
-    sv = extract_sequence(start, True)
-    sh = extract_sequence(start, False)
-    print(sh)
+    v = extract_sequence(start, True)
+    h = extract_sequence(start, False)
+    print(h)
