@@ -1,5 +1,7 @@
+import math
 import sys
 from dataclasses import dataclass
+from functools import partial
 
 '''
 a.b.
@@ -36,6 +38,49 @@ class Sequence:
     coords: tuple[Pos, ...]
 
 
+def make_rule(line):
+    letter = line[0]
+    rule = line[7:]
+    last = line.split()[-1]
+
+    pats = {
+        'cube': is_cube,
+        'square': is_square,
+        'power': is_power,
+        'multiple': is_multiple,
+        'palindrome': is_palindrome,
+    }
+
+    for pat, func in pats.items():
+        if pat in rule:
+            return letter, func
+
+    raise NotImplementedError(f'Unknown rule: {line}')
+
+
+def is_cube(x: int):
+    return int(x**(1 / 3))**3 == x
+
+
+def is_square(x: int):
+    return int(math.sqrt(x))**2 == x
+
+
+def is_power(x: int, b: int):
+    for e in range(x + 1):
+        if b**e == x:
+            return True
+    return False
+
+
+def is_multiple(x: int, of: int):
+    return x % of == 0
+
+
+def is_palindrome(x: int):
+    return all(a == b for a, b in zip(str(x), str(x)[::-1]))
+
+
 def extract_sequence(
     start: Pos,
     vert: bool,
@@ -58,6 +103,10 @@ G = {
     for r, line in enumerate(a.split('\n'))
     for c, v in enumerate(line)
 }
+
+RULES = list(map(make_rule, b.split('\n')))
+
+exit()
 
 ROWS = 1 + max(r for r, _ in G)
 COLS = 1 + max(c for _, c in G)
