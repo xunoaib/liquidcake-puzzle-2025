@@ -1,0 +1,72 @@
+..a..b..c
+.d.e..f..
+g.h..i.j.
+.k....l.m
+....n..o.
+p.q..r...
+.s.t..u..
+..v.w..x.
+y..z.....
+
+a is a power of 3
+b is a square
+c is a multiple of 44
+d is a multiple of 41
+e is a palindrome
+f is a multiple of 4201
+g is a palindrome
+h is a palindrome
+i is a multiple of 13
+j is a cube
+k is a multiple of 16037
+l is a multiple of 2
+m is a multiple of 5
+n is a palindrome
+o is a multiple of 122917
+p is a power of 3
+q is a palindrome
+r is a multiple of 3586
+s is a multiple of 3
+t is a multiple of 131
+u is a palindrome
+v is a cube
+w is a square
+x is a multiple of 60
+y is a multiple of 3
+z is a square
+A is a palindrome
+B is a multiple of 15
+C is a palindrome
+D is a palindrome
+E is a palindrome
+F is a power of 3
+G is a multiple of 200
+H is a multiple of 127
+I is a multiple of 131
+J is a power of 2
+K is a square
+L is a multiple of 81
+M is a power of 2
+N is a multiple of 317
+O is a multiple of 13
+P is a palindrome
+Q is a palindrome
+R is a multiple of 3873
+S is a cube
+T is a multiple of 47
+U is a multiple of 274
+V is a power of 2
+W is a palindrome
+X is a multiple of 79
+Y is a palindrome
+Z is a cube
+
+401224344
+430535432
+422309010
+222201311
+333417243
+442244034
+115220434
+032233330
+133412013
