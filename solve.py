@@ -88,6 +88,85 @@ def extract_number(s: Sequence):
     return int(''.join(str(GELF[c]) for c in s.coords))
 
 
+def part2():
+
+    incorrect_letters = {s.letter for s in incorrect}
+    correct_positions = {p for s in correct for p in s.coords}
+    incorrect_positions = {
+        p
+        for s in incorrect
+        for p in s.coords
+    } - correct_positions
+
+    solver = Solver()
+    ngrid = {
+        p: (GELF[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
+        for p in G
+    }
+
+    for p in incorrect_positions:
+        assert not isinstance(ngrid[p], int)
+        solver.add(ngrid[p] >= 0)
+        solver.add(ngrid[p] <= 9)
+
+    ztemps = []
+    seqnum = {}
+
+    for letter, rule, line in RULES:
+        if letter not in incorrect_letters:
+            continue
+        s = sequences[letter]
+        z = Sum(ngrid[p] * 10**i for i, p in enumerate(s.coords[::-1]))
+
+        if False:
+            pass
+        elif 'cube' in line:
+            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
+            solver.add(z == t * t * t)
+        elif 'square' in line:
+            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
+            solver.add(z == t * t)
+        elif 'multiple' in line:
+            last = int(line.split()[-1])
+            solver.add(z % last == 0)
+        elif 'power' in line:
+            # ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
+            base = int(line.split()[-1])
+            # print(f'{letter}: {base} ** {t} == {z}')
+            # solver.add(z == base**t)
+            conds = []
+            for e in count():
+                v = base**e
+                if math.log10(v) > len(s.coords):
+                    break
+                conds.append(z == v)
+            solver.add(Or(conds))
+
+        elif 'palindrome' in line:
+            solver.add(
+                And(
+                    ngrid[p] == ngrid[q]
+                    for p, q in zip(s.coords, s.coords[::-1])
+                )
+            )
+
+    print('solving')
+    assert solver.check() == sat, f'Model not satisfied: {solver.check()}'
+    m = solver.model()
+
+    s = ''
+    for r in range(ROWS):
+        for c in range(COLS):
+            v = ngrid[r, c]
+            s += str(v if isinstance(v, int) else m.evaluate(v))
+        s += '\n'
+
+    print(s)
+    s = re.sub(r'[0,2,4,6,8]', '.', s)
+    print(s)
+    return sum(map(int, re.findall(r'\d+', s)))
+
+
 if len(sys.argv) > 1:
     print('reading', sys.argv[1])
     file = open(sys.argv[1])
@@ -126,94 +205,21 @@ for letter, start in STARTS.items():
 correct = []
 incorrect = []
 
-t = 0
+a1 = 0
 for letter, rule, line in RULES:
     s = sequences[letter]
     v = extract_number(s)
     if not rule(v):
-        t += v
+        a1 += v
         incorrect.append(s)
     else:
         correct.append(s)
 
-# print('part1:', t)
+print('part1:', a1)
 
-incorrect_letters = {s.letter for s in incorrect}
-correct_positions = {p for s in correct for p in s.coords}
-incorrect_positions = {
-    p
-    for s in incorrect
-    for p in s.coords
-} - correct_positions
+a2 = part2()
 
-solver = Solver()
-ngrid = {
-    p: (GELF[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
-    for p in G
-}
+print('part2:', a2)
 
-for p in incorrect_positions:
-    assert not isinstance(ngrid[p], int)
-    solver.add(ngrid[p] >= 0)
-    solver.add(ngrid[p] <= 9)
-
-ztemps = []
-seqnum = {}
-
-for letter, rule, line in RULES:
-    if letter not in incorrect_letters:
-        continue
-    s = sequences[letter]
-    z = Sum(ngrid[p] * 10**i for i, p in enumerate(s.coords[::-1]))
-
-    if False:
-        pass
-    elif 'cube' in line:
-        ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-        solver.add(z == t * t * t)
-    elif 'square' in line:
-        ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-        solver.add(z == t * t)
-    elif 'multiple' in line:
-        last = int(line.split()[-1])
-        solver.add(z % last == 0)
-    elif 'power' in line:
-        # ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-        base = int(line.split()[-1])
-        # print(f'{letter}: {base} ** {t} == {z}')
-        # solver.add(z == base**t)
-        conds = []
-        for e in count():
-            v = base**e
-            if math.log10(v) > len(s.coords):
-                break
-            conds.append(z == v)
-        solver.add(Or(conds))
-
-    elif 'palindrome' in line:
-        solver.add(
-            And(
-                ngrid[p] == ngrid[q] for p, q in zip(s.coords, s.coords[::-1])
-            )
-        )
-
-print('solving')
-assert solver.check() == sat, f'Model not satisfied: {solver.check()}'
-m = solver.model()
-
-s = ''
-for r in range(ROWS):
-    for c in range(COLS):
-        v = ngrid[r, c]
-        s += str(v if isinstance(v, int) else m.evaluate(v))
-    s += '\n'
-
-print(s)
-
-s = re.sub(r'[0,2,4,6,8]', '.', s)
-
-print(s)
-groups = list(map(int, re.findall(r'\d+', s)))
-
-print(groups)
-print('part2:', sum(groups))
+assert a1 == 1401106
+assert a2 == 517533251
