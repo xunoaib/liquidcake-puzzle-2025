@@ -110,13 +110,15 @@ def part2():
         solver.add(ngrid[p] <= 9)
 
     ztemps = []
-    seqnum = {}
 
-    for letter, rule, line in RULES:
+    for letter, _, line in RULES:
         if letter not in incorrect_letters:
             continue
         s = sequences[letter]
         z = Sum(ngrid[p] * 10**i for i, p in enumerate(s.coords[::-1]))
+
+        solver.add(z >= 10**(len(s.coords) - 1))
+        solver.add(z <= 10**(len(s.coords) + 1))
 
         if 'cube' in line:
             ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
@@ -125,9 +127,8 @@ def part2():
             ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             solver.add(z == t * t)
         elif 'multiple' in line:
-            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             last = int(line.split()[-1])
-            solver.add(z == last * t)
+            solver.add(z % last == 0)
         elif 'power' in line:
             base = int(line.split()[-1])
             conds = []
@@ -137,12 +138,11 @@ def part2():
                     break
                 conds.append(z == v)
             solver.add(Or(conds))
-
         elif 'palindrome' in line:
             solver.add(
                 And(
-                    ngrid[p] == ngrid[q]
-                    for p, q in zip(s.coords, s.coords[::-1])
+                    ngrid[p] == ngrid[q] for p, q in
+                    list(zip(s.coords, s.coords[::-1]))[:len(s.coords) // 2]
                 )
             )
 
