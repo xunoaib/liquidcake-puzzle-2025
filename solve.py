@@ -57,7 +57,7 @@ def is_power(x: int, b: int):
 
 
 def is_palindrome(x: int):
-    return all(a == b for a, b in zip(str(x), str(x)[::-1]))
+    return str(x) == str(x)[::-1]
 
 
 def add(a: tuple[int, int], b: tuple[int, int]):
@@ -67,11 +67,8 @@ def add(a: tuple[int, int], b: tuple[int, int]):
 def extract_sequence(start: tuple[int, int], vert: bool):
     offset = (1, 0) if vert else (0, 1)
     coords = [start]
-
-    p = add(start, offset)
-    while p not in LETTER_STARTS.values():
+    while (p := add(coords[-1], offset)) not in LETTER_STARTS.values():
         coords.append(p)
-        p = add(p, offset)
 
     letter = G[start].upper() if vert else G[start].lower()
     return Sequence(letter, coords)
