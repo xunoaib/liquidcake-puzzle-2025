@@ -6,22 +6,19 @@ from itertools import count
 from typing import override
 
 from joblib import Memory
+from z3 import And, Int, Or, Solver, Sum, sat
 
 memory = Memory('.joblib')
 
-from z3 import And, Int, Or, Solver, Sum, sat
 
-Pos = tuple[int, int]
-
-
-def add(a: Pos, b: Pos) -> Pos:
+def add(a: tuple[int, int], b: tuple[int, int]):
     return (a[0] + b[0]) % ROWS, (a[1] + b[1]) % COLS
 
 
 @dataclass
 class Sequence:
     letter: str
-    coords: tuple[Pos, ...]
+    coords: tuple[tuple[int, int], ...]
 
 
 class Rule:
@@ -34,65 +31,44 @@ class Rule:
         assert m
         self.letter = m.group(1)
         self.type = m.group(2)
-        self._value = None if m.group(3) is None else int(m.group(3))
+        self._of = None if m.group(3) is None else int(m.group(3))
         self.text = text
-
-    def valid(self, value: int):
-        f = {
-            'cube': is_cube,
-            'square': is_square,
-            'power': lambda x: is_power(x, b=self.value),
-            'multiple': lambda x: is_multiple(x, of=self.value),
+        self.valid = {
+            'square': lambda x: int(x**(1 / 2))**2 == x,
+            'cube': lambda x: int(x**(1 / 3))**3 == x,
+            'power': lambda x: is_power(x, b=self.of),
+            'multiple': lambda x: x % self.of == 0,
             'palindrome': is_palindrome,
         }[self.type]
-        return f(value)
 
     @property
-    def value(self):
-        assert self._value is not None
-        return self._value
+    def of(self):
+        assert self._of is not None
+        return self._of
 
     @override
     def __repr__(self) -> str:
-        if self._value is None:
+        if self._of is None:
             return f'<{self.letter} is {self.type})>'
         else:
-            return f'<{self.letter} is {self.type} of {self.value}>'
-
-
-def is_cube(x: int):
-    return int(x**(1 / 3))**3 == x
-
-
-def is_square(x: int):
-    return int(x**(1 / 2))**2 == x
+            return f'<{self.letter} is {self.type} of {self.of}>'
 
 
 @memory.cache
 def is_power(x: int, b: int):
-    for e in range(x + 1):
-        if b**e == x:
-            return True
-    return False
-
-
-def is_multiple(x: int, of: int):
-    return x % of == 0
+    return any(b**e == x for e in range(x + 1))
 
 
 def is_palindrome(x: int):
     return all(a == b for a, b in zip(str(x), str(x)[::-1]))
 
 
-def extract_sequence(
-    start: Pos,
-    vert: bool,
-):
+def extract_sequence(start: tuple[int, int], vert: bool):
     offset = (1, 0) if vert else (0, 1)
     coords = (start, )
 
     p = add(start, offset)
-    while p not in STARTS.values():
+    while p not in LETTER_STARTS.values():
         coords += (p, )
         p = add(p, offset)
 
@@ -101,8 +77,8 @@ def extract_sequence(
 
 
 def part2():
-    incorrect_letters = {s.letter for s in incorrect}
     correct_positions = {p for s in correct for p in s.coords}
+    incorrect_letters = {s.letter for s in incorrect}
     incorrect_positions = {
         p
         for s in incorrect
@@ -110,27 +86,32 @@ def part2():
     } - correct_positions
 
     solver = Solver()
-    ngrid = {
+
+    # Create a grid where correct positions are fixed ints
+    # and incorrect positions are symbolic variables
+    zgrid = {
         p:
         (G_GUESSES[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
         for p in G
     }
 
     for p in incorrect_positions:
-        assert not isinstance(ngrid[p], int)
-        solver.add(ngrid[p] >= 0)
-        solver.add(ngrid[p] <= 9)
+        solver.add(zgrid[p] >= 0)
+        solver.add(zgrid[p] <= 9)
 
-    ztemps = []
+    ztemps = []  # temporary variables
 
-    for letter, rule in rules.items():
-        if letter not in incorrect_letters:
-            continue
-        s = sequences[letter]
-        z = Sum(ngrid[p] * 10**i for i, p in enumerate(s.coords[::-1]))
+    # for letter, rule in rules.items():
+    #     if letter not in incorrect_letters:
+    #         continue
 
-        solver.add(z >= 10**(len(s.coords) - 1))
-        solver.add(z <= 10**(len(s.coords) + 1))
+    for letter in incorrect_letters:
+        rule = rules[letter]
+        seq = sequences[letter]
+
+        z = Sum(zgrid[p] * 10**i for i, p in enumerate(seq.coords[::-1]))
+        solver.add(z >= 10**(len(seq.coords) - 1))
+        solver.add(z <= 10**(len(seq.coords) + 1))
 
         match rule.type:
             case 'cube':
@@ -140,21 +121,21 @@ def part2():
                 ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
                 solver.add(z == t * t)
             case 'multiple':
-                solver.add(z % rule.value == 0)
+                solver.add(z % rule.of == 0)
             case 'power':
                 conds = []
                 for e in count():
-                    v = rule.value**e
-                    if math.log10(v) > len(s.coords):
+                    v = rule.of**e
+                    if math.log10(v) > len(seq.coords):
                         break
                     conds.append(z == v)
                 solver.add(Or(conds))
             case 'palindrome':
                 solver.add(
                     And(
-                        ngrid[p] == ngrid[q]
-                        for p, q in list(zip(s.coords, s.coords[::-1]))
-                        [:len(s.coords) // 2]
+                        zgrid[p] == zgrid[q]
+                        for p, q in list(zip(seq.coords, seq.coords[::-1]))
+                        [:len(seq.coords) // 2]
                     )
                 )
             case _:
@@ -164,17 +145,17 @@ def part2():
     assert solver.check() == sat, f'Model not satisfied: {solver.check()}'
     m = solver.model()
 
-    s = ''
+    seq = ''
     for r in range(ROWS):
         for c in range(COLS):
-            v = ngrid[r, c]
-            s += str(v if isinstance(v, int) else m.evaluate(v))
-        s += '\n'
+            v = zgrid[r, c]
+            seq += str(v if isinstance(v, int) else m.evaluate(v))
+        seq += '\n'
 
-    print(s)
-    s = re.sub(r'[0,2,4,6,8]', '.', s)
-    print(s)
-    return sum(map(int, re.findall(r'\d+', s)))
+    print(seq)
+    seq = re.sub(r'[0,2,4,6,8]', '.', seq)
+    print(seq)
+    return sum(map(int, re.findall(r'\d+', seq)))
 
 
 if len(sys.argv) > 1:
@@ -184,7 +165,7 @@ else:
     print('reading from stdin...')
     file = sys.stdin
 
-a, b, cvals = file.read().strip().split('\n\n')
+a, b, guesses = file.read().strip().split('\n\n')
 
 G = {
     (r, c): v
@@ -194,37 +175,35 @@ G = {
 
 G_GUESSES = {
     (r, c): int(v)
-    for r, line in enumerate(cvals.split('\n'))
+    for r, line in enumerate(guesses.split('\n'))
     for c, v in enumerate(line)
 }
 
 ROWS = 1 + max(r for r, _ in G)
 COLS = 1 + max(c for _, c in G)
-STARTS = {v: k for k, v in G.items() if v != '.'}
 
-# Construct letter => Rule mappings
-rules: dict[str, Rule] = {}
-for rulestr in b.split('\n'):
-    r = Rule(rulestr)
-    assert r.letter not in rules
-    rules[r.letter] = r
+LETTER_STARTS = {v: k for k, v in G.items() if v != '.'}
 
 # Collect vert/horiz letter sequences
 sequences = {}
-for letter, start in STARTS.items():
+for letter, start in LETTER_STARTS.items():
     sequences[v.letter] = (v := extract_sequence(start, True))
     sequences[h.letter] = (h := extract_sequence(start, False))
 
+# Construct letter => Rule mappings
+rules: dict[str, Rule] = {r.letter: r for r in map(Rule, b.split('\n'))}
+
 # Identify which sequences are correct/incorrect
-correct, incorrect = [], []
+correct: list[Sequence] = []
+incorrect: list[Sequence] = []
 
 a1 = 0
 for letter, rule in rules.items():
     seq = sequences[letter]
     value = int(''.join(str(G_GUESSES[c]) for c in seq.coords))
-    valid = rule.valid(value)
-    a1 += value * (not valid)
-    [incorrect, correct][valid].append(seq)
+    invalid = not rule.valid(value)
+    a1 += value * invalid
+    (correct, incorrect)[invalid].append(seq)
 
 print('part1:', a1)
 print('part2:', a2 := part2())
