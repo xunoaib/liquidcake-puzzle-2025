@@ -2,8 +2,8 @@ import math
 import re
 import sys
 from dataclasses import dataclass
-from functools import partial
 from itertools import count
+from typing import override
 
 from joblib import Memory
 
@@ -24,24 +24,35 @@ class Sequence:
     coords: tuple[Pos, ...]
 
 
-def make_rule(line):
-    letter = line[0]
-    rule = line[7:]
-    last = line.split()[-1]
+class Rule:
 
-    pats = {
-        'cube': is_cube,
-        'square': is_square,
-        'power': lambda x: is_power(x, b=int(last)),
-        'multiple': lambda x: is_multiple(x, of=int(last)),
-        'palindrome': is_palindrome,
-    }
+    def __init__(self, text):
+        m = re.match(
+            r'(.*?) is a (square|cube|power|multiple|palindrome).*?(\d+)?$',
+            text
+        )
+        assert m
+        self.letter = m.group(1)
+        self.type = m.group(2)
+        self.value = None if m.group(3) is None else int(m.group(3))
+        self.text = text
 
-    for pat, func in pats.items():
-        if pat in rule:
-            return letter, func, rule
+    @property
+    def validation_func(self):
+        return {
+            'cube': is_cube,
+            'square': is_square,
+            'power': lambda x: is_power(x, b=self.value),
+            'multiple': lambda x: is_multiple(x, of=self.value),
+            'palindrome': is_palindrome,
+        }[self.type]
 
-    raise NotImplementedError(f'Unknown rule: {line}')
+    @override
+    def __repr__(self) -> str:
+        if self.value is None:
+            return f'<{self.letter} is {self.type})>'
+        else:
+            return f'<{self.letter} is {self.type} of {self.value}>'
 
 
 def is_cube(x: int):
@@ -183,6 +194,10 @@ GELF = {
     for r, line in enumerate(cvals.split('\n'))
     for c, v in enumerate(line)
 }
+
+for t in b.split('\n'):
+    print(Rule(t))
+exit()
 
 RULES = list(map(make_rule, b.split('\n')))
 
