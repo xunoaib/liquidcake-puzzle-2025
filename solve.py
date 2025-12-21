@@ -222,17 +222,12 @@ a1 = 0
 for letter, rule in rules.items():
     seq = sequences[letter]
     value = int(''.join(str(G_GUESSES[c]) for c in seq.coords))
-    if rule.valid(value):
-        correct.append(seq)
-    else:
-        a1 += value
-        incorrect.append(seq)
+    valid = rule.valid(value)
+    a1 += value * (not valid)
+    [incorrect, correct][valid].append(seq)
 
 print('part1:', a1)
-
-a2 = part2()
-
-print('part2:', a2)
+print('part2:', a2 := part2())
 
 assert a1 == 1401106
 assert a2 == 517533251
