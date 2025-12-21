@@ -37,15 +37,15 @@ class Rule:
         self.value = None if m.group(3) is None else int(m.group(3))
         self.text = text
 
-    @property
-    def validation_func(self):
-        return {
+    def valid(self, value: int):
+        f = {
             'cube': is_cube,
             'square': is_square,
             'power': lambda x: is_power(x, b=self.value),
             'multiple': lambda x: is_multiple(x, of=self.value),
             'palindrome': is_palindrome,
         }[self.type]
+        return f(value)
 
     @override
     def __repr__(self) -> str:
@@ -95,12 +95,7 @@ def extract_sequence(
     return Sequence(letter, coords)
 
 
-def extract_number(s: Sequence):
-    return int(''.join(str(GELF[c]) for c in s.coords))
-
-
 def part2():
-
     incorrect_letters = {s.letter for s in incorrect}
     correct_positions = {p for s in correct for p in s.coords}
     incorrect_positions = {
@@ -111,7 +106,8 @@ def part2():
 
     solver = Solver()
     ngrid = {
-        p: (GELF[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
+        p:
+        (G_GUESSES[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
         for p in G
     }
 
@@ -189,44 +185,44 @@ G = {
     for c, v in enumerate(line)
 }
 
-GELF = {
+G_GUESSES = {
     (r, c): int(v)
     for r, line in enumerate(cvals.split('\n'))
     for c, v in enumerate(line)
 }
 
-for t in b.split('\n'):
-    print(Rule(t))
-exit()
-
-RULES = list(map(make_rule, b.split('\n')))
-
 ROWS = 1 + max(r for r, _ in G)
 COLS = 1 + max(c for _, c in G)
 STARTS = {v: k for k, v in G.items() if v != '.'}
 
+# Construct letter => Rule mappings
+rules: dict[str, Rule] = {}
+for rulestr in b.split('\n'):
+    r = Rule(rulestr)
+    assert r.letter not in rules
+    rules[r.letter] = r
+
+# Collect vert/horiz letter sequences
 sequences = {}
-
 for letter, start in STARTS.items():
-    v = extract_sequence(start, True)
-    h = extract_sequence(start, False)
-    sequences[v.letter] = v
-    sequences[h.letter] = h
+    sequences[v.letter] = (v := extract_sequence(start, True))
+    sequences[h.letter] = (h := extract_sequence(start, False))
 
-correct = []
-incorrect = []
+# Identify which sequences are correct/incorrect
+correct, incorrect = [], []
 
 a1 = 0
-for letter, rule, line in RULES:
-    s = sequences[letter]
-    v = extract_number(s)
-    if not rule(v):
-        a1 += v
-        incorrect.append(s)
+for letter, rule in rules.items():
+    seq = sequences[letter]
+    value = int(''.join(str(G_GUESSES[c]) for c in seq.coords))
+    if rule.valid(value):
+        correct.append(seq)
     else:
-        correct.append(s)
+        a1 += value
+        incorrect.append(seq)
 
 print('part1:', a1)
+exit()
 
 a2 = part2()
 
