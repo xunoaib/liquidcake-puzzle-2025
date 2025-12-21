@@ -34,7 +34,7 @@ class Rule:
         assert m
         self.letter = m.group(1)
         self.type = m.group(2)
-        self.value = None if m.group(3) is None else int(m.group(3))
+        self._value = None if m.group(3) is None else int(m.group(3))
         self.text = text
 
     def valid(self, value: int):
@@ -47,9 +47,14 @@ class Rule:
         }[self.type]
         return f(value)
 
+    @property
+    def value(self):
+        assert self._value is not None
+        return self._value
+
     @override
     def __repr__(self) -> str:
-        if self.value is None:
+        if self._value is None:
             return f'<{self.letter} is {self.type})>'
         else:
             return f'<{self.letter} is {self.type} of {self.value}>'
@@ -118,7 +123,7 @@ def part2():
 
     ztemps = []
 
-    for letter, _, line in RULES:
+    for letter, rule in rules.items():
         if letter not in incorrect_letters:
             continue
         s = sequences[letter]
@@ -127,31 +132,33 @@ def part2():
         solver.add(z >= 10**(len(s.coords) - 1))
         solver.add(z <= 10**(len(s.coords) + 1))
 
-        if 'cube' in line:
-            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-            solver.add(z == t * t * t)
-        elif 'square' in line:
-            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-            solver.add(z == t * t)
-        elif 'multiple' in line:
-            last = int(line.split()[-1])
-            solver.add(z % last == 0)
-        elif 'power' in line:
-            base = int(line.split()[-1])
-            conds = []
-            for e in count():
-                v = base**e
-                if math.log10(v) > len(s.coords):
-                    break
-                conds.append(z == v)
-            solver.add(Or(conds))
-        elif 'palindrome' in line:
-            solver.add(
-                And(
-                    ngrid[p] == ngrid[q] for p, q in
-                    list(zip(s.coords, s.coords[::-1]))[:len(s.coords) // 2]
+        match rule.type:
+            case 'cube':
+                ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
+                solver.add(z == t * t * t)
+            case 'square':
+                ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
+                solver.add(z == t * t)
+            case 'multiple':
+                solver.add(z % rule.value == 0)
+            case 'power':
+                conds = []
+                for e in count():
+                    v = rule.value**e
+                    if math.log10(v) > len(s.coords):
+                        break
+                    conds.append(z == v)
+                solver.add(Or(conds))
+            case 'palindrome':
+                solver.add(
+                    And(
+                        ngrid[p] == ngrid[q]
+                        for p, q in list(zip(s.coords, s.coords[::-1]))
+                        [:len(s.coords) // 2]
+                    )
                 )
-            )
+            case _:
+                raise NotImplementedError(f'Unknown rule: {rule.type}')
 
     print('solving')
     assert solver.check() == sat, f'Model not satisfied: {solver.check()}'
@@ -222,7 +229,6 @@ for letter, rule in rules.items():
         incorrect.append(seq)
 
 print('part1:', a1)
-exit()
 
 a2 = part2()
 
