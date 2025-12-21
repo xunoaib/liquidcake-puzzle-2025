@@ -2,7 +2,8 @@ import math
 import re
 import sys
 from dataclasses import dataclass
-from itertools import count
+from itertools import count, dropwhile, takewhile
+from math import ceil, floor, log10
 from typing import override
 
 from z3 import And, Int, Or, Solver, Sum, sat
@@ -104,8 +105,10 @@ def part2():
         seq = sequences[letter]
 
         z = Sum(zgrid[p] * 10**i for i, p in enumerate(seq.coords[::-1]))
-        solver.add(z >= 10**(len(seq.coords) - 1))
-        solver.add(z <= 10**(len(seq.coords) + 1))
+
+        zdigits = len(seq.coords)
+        solver.add(z >= 10**(zdigits - 1))
+        solver.add(z <= 10**(zdigits + 1))
 
         match rule.type:
             case 'cube':
@@ -117,33 +120,31 @@ def part2():
             case 'multiple':
                 solver.add(z % rule.of == 0)
             case 'power':
-                conds = []
-                for e in count():
-                    v = rule.of**e
-                    if math.log10(v) > len(seq.coords):
-                        break
-                    conds.append(z == v)
-                solver.add(Or(conds))
+                b = rule.of
+                lo = ceil((zdigits - 1) / log10(b))
+                hi = floor((zdigits) / log10(b))
+                solver.add(Or([z == b**exp for exp in range(lo, hi + 1)]))
             case 'palindrome':
+                half = len(seq.coords) // 2
                 solver.add(
                     And(
-                        zgrid[p] == zgrid[q]
-                        for p, q in list(zip(seq.coords, seq.coords[::-1]))
-                        [:len(seq.coords) // 2]
+                        zgrid[p] == zgrid[q] for p, q in
+                        list(zip(seq.coords[:half], seq.coords[:half:-1]))
                     )
                 )
             case _:
                 raise NotImplementedError(f'Unknown rule: {rule.type}')
 
     print('solving')
-    assert solver.check() == sat, f'Model not satisfied: {solver.check()}'
+    res = solver.check()
+    assert res == sat, f'Model not satisfied: {res}'
     m = solver.model()
 
     seq = ''
     for r in range(ROWS):
         for c in range(COLS):
             v = zgrid[r, c]
-            seq += str(v if isinstance(v, int) else m.evaluate(v))
+            seq += str(v if isinstance(v, int) else m[v])
         seq += '\n'
 
     print(seq)
