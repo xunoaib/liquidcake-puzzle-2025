@@ -1,0 +1,106 @@
+<html>
+	<head>
+		<title>Puzzle!</title>
+	</head>
+
+	<body>
+		<h1>Puzzle!</h1>
+		<h2>About</h2>
+		<p>I made this puzzle as a followup for Advent of Code 2025. It is primarily designed to be accessible via LCOLONQ's "pubnix" (<code>nc localhost 9999</code> if you have an account and the server is still up), but an online version with a fixed input is here.</p>
+		<h2>Meat</h2>
+<p>You awake.</p>
+
+<p>As you come to, you realise you are on a mission.</p>
+
+<p>A mission to see someone.</p>
+
+<p>Santa Claus.</p>
+
+<p>Somehow on your route you became distracted. Sniped. By some kind of arcane puzzle.</p>
+
+<p>You felt you could not rest until it was done, but your body was too weak and frail from wading through the slop.</p>
+
+<p>You struggle to remember what had you so fixated. Some kind of grid.</p>
+
+<p><pre>
+a.b.
+.c.d
+e...
+.f..
+</pre></p>
+
+<p>Each letter starts a sequence of digits which wraps around the edges and stops before the next letter. There are both lowercase, horizontal, sequences, and capital, vertical, sequences. The sequences form numbers. For the above grid, they might be written like this:</p>
+
+<p><pre>
+a0 a1 b0 b1
+d1 c0 c1 d0
+e0 e1 e2 e3
+f3 f0 f1 f2
+</pre></p>
+
+<p><pre>
+A0 F1 B0 D3
+A1 C0 B1 D0
+E0 C1 B2 D1
+E1 F0 B3 D2
+</pre></p>
+
+<p>Digits can be any single decimal digit. Digits which start a sequence cannot be 0 (eg. <code>a0</code> may not be 0).</p>
+
+<p>Additionally, you have some facts:</p>
+
+<p><pre>
+a is a cube
+b is a palindrome
+c is a power of 2
+d is a square
+e is a multiple of 127
+f is a multiple of 29
+A is a multiple of 12
+B is a multiple of 3099
+C is a palindrome
+D is a multiple of 2253
+E is a multiple of 3
+F is a power of 3
+</pre></p>
+
+<p>You realise there's an elf by your side. The elf seems to have been caught by the puzzle, too.</p>
+
+<p>The elf has scribbled an attempt to solve an easy problem for you, so the page looks like this:</p>
+
+<p><pre>
+a.b.
+.c.d
+e...
+.f..
+
+a is a cube
+b is a palindrome
+c is a power of 2
+d is a square
+e is a multiple of 127
+f is a multiple of 29
+A is a multiple of 12
+B is a multiple of 3099
+C is a palindrome
+D is a multiple of 2253
+E is a multiple of 3
+F is a power of 3
+
+2142
+4414
+1397
+3311
+</pre></p>
+
+<p>Alas, the puzzle requires rather a lot of arithmetic, and elves can only count on one hand; they often get confused when a number has digits larger than 5. You see that the elf has made some obvious mistakes. Half-awake, you point out to the elf which are incorrect. In this example, that's a, b, c, d, f, B, C, D, E and F. The sum of the elf's wrong answers is 21 + 42 + 41 + 44 + 3113 + 4191 + 43 + 4712 + 13 + 31 = 12251.</p>
+
+<p>The elf is also holding a larger puzzle and has made an attempt at it. This is the one that drove you to madness.</p>
+
+<p>Checking these clues wakes you up and motivates you to again try the larger puzzle.</p>
+
+<p>For your <a href="input.txt">input</a>, what is the sum of the elf's incorrect values?</p>
+
+<p>Part 2 is available at <code>YOUR_ANSWER_HERE.html</code> in this directory.</p>
+	</body>
+</html>
