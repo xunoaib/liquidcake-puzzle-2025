@@ -1,8 +1,6 @@
-import math
 import re
 import sys
 from dataclasses import dataclass
-from itertools import count, dropwhile, takewhile
 from math import ceil, floor, log10
 from typing import override
 
@@ -98,7 +96,7 @@ def part2():
         solver.add(zgrid[p] >= 0)
         solver.add(zgrid[p] <= 9)
 
-    ztemps = []  # temporary variables
+    ztemps = []  # temporary z3 variables
 
     for letter in incorrect_letters:
         rule = rules[letter]
@@ -122,14 +120,14 @@ def part2():
             case 'power':
                 b = rule.of
                 lo = ceil((zdigits - 1) / log10(b))
-                hi = floor((zdigits) / log10(b))
-                solver.add(Or([z == b**exp for exp in range(lo, hi + 1)]))
+                hi = floor(zdigits / log10(b))
+                solver.add(Or(z == b**exp for exp in range(lo, hi + 1)))
             case 'palindrome':
                 half = len(seq.coords) // 2
                 solver.add(
                     And(
                         zgrid[p] == zgrid[q] for p, q in
-                        list(zip(seq.coords[:half], seq.coords[:half:-1]))
+                        zip(seq.coords[:half], seq.coords[:half:-1])
                     )
                 )
             case _:
@@ -154,23 +152,23 @@ def part2():
 
 
 if len(sys.argv) > 1:
-    print('reading', sys.argv[1])
+    print('reading from', sys.argv[1])
     file = open(sys.argv[1])
 else:
     print('reading from stdin...')
     file = sys.stdin
 
-a, b, guesses = file.read().strip().split('\n\n')
+grid_txt, rules_txt, vals_txt = file.read().strip().split('\n\n')
 
 G = {
     (r, c): v
-    for r, line in enumerate(a.split('\n'))
+    for r, line in enumerate(grid_txt.split('\n'))
     for c, v in enumerate(line)
 }
 
 G_GUESSES = {
     (r, c): int(v)
-    for r, line in enumerate(guesses.split('\n'))
+    for r, line in enumerate(vals_txt.split('\n'))
     for c, v in enumerate(line)
 }
 
@@ -186,7 +184,10 @@ for letter, start in LETTER_STARTS.items():
     sequences[h.letter] = (h := extract_sequence(start, False))
 
 # Construct letter => Rule mappings
-rules: dict[str, Rule] = {r.letter: r for r in map(Rule, b.split('\n'))}
+rules: dict[str, Rule] = {
+    r.letter: r
+    for r in map(Rule, rules_txt.split('\n'))
+}
 
 # Identify which sequences are correct/incorrect
 correct: list[Sequence] = []
