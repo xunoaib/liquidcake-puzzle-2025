@@ -11,7 +11,7 @@ from z3 import And, Int, Or, Solver, Sum, sat
 @dataclass
 class Sequence:
     letter: str
-    coords: tuple[tuple[int, int], ...]
+    coords: list[tuple[int, int]]
 
 
 class Rule:
@@ -66,11 +66,11 @@ def add(a: tuple[int, int], b: tuple[int, int]):
 
 def extract_sequence(start: tuple[int, int], vert: bool):
     offset = (1, 0) if vert else (0, 1)
-    coords = (start, )
+    coords = [start]
 
     p = add(start, offset)
     while p not in LETTER_STARTS.values():
-        coords += (p, )
+        coords.append(p)
         p = add(p, offset)
 
     letter = G[start].upper() if vert else G[start].lower()
