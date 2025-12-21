@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from math import ceil, floor, log10
 from typing import override
 
-from z3 import And, Int, Or, Solver, Sum, sat
+from z3 import Int, Or, Solver, Sum, sat
 
 
 @dataclass
@@ -21,17 +21,17 @@ class Rule:
             text
         )
         assert m
-        self.letter = m.group(1)
-        self.type = m.group(2)
-        self._of = None if m.group(3) is None else int(m.group(3))
-        self.text = text
+        letter, _type, of = m.groups()
+        self.letter = letter
+        self.type = _type
+        self._of = int(of) if of else None
         self.valid = {
             'square': lambda x: int(x**(1 / 2))**2 == x,
             'cube': lambda x: int(x**(1 / 3))**3 == x,
             'power': lambda x: is_power(x, b=self.of),
             'multiple': lambda x: x % self.of == 0,
-            'palindrome': is_palindrome,
-        }[self.type]
+            'palindrome': lambda x: str(x) == str(x)[::-1],
+        }[_type]
 
     @property
     def of(self):
@@ -55,16 +55,13 @@ def is_power(x: int, b: int):
     return x == 1
 
 
-def is_palindrome(x: int):
-    return str(x) == str(x)[::-1]
-
-
 def add(a: tuple[int, int], b: tuple[int, int]):
     return (a[0] + b[0]) % ROWS, (a[1] + b[1]) % COLS
 
 
 def extract_sequence(start: tuple[int, int], vert: bool):
     offset = (1, 0) if vert else (0, 1)
+
     coords = [start]
     while (p := add(coords[-1], offset)) not in LETTER_STARTS.values():
         coords.append(p)
@@ -87,8 +84,7 @@ def part2():
     # Create a grid where correct positions are fixed ints
     # and incorrect positions are symbolic variables
     zgrid = {
-        p:
-        (G_GUESSES[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
+        p: (GUESSES[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
         for p in G
     }
 
@@ -106,7 +102,7 @@ def part2():
 
         zdigits = len(seq.coords)
         solver.add(z >= 10**(zdigits - 1))
-        solver.add(z <= 10**(zdigits + 1))
+        solver.add(z < 10**zdigits)
 
         match rule.type:
             case 'cube':
@@ -123,13 +119,8 @@ def part2():
                 hi = floor(zdigits / log10(b))
                 solver.add(Or(z == b**exp for exp in range(lo, hi + 1)))
             case 'palindrome':
-                half = len(seq.coords) // 2
-                solver.add(
-                    And(
-                        zgrid[p] == zgrid[q] for p, q in
-                        zip(seq.coords[:half], seq.coords[:half:-1])
-                    )
-                )
+                for p, q in zip(seq.coords, seq.coords[::-1]):  # redundant
+                    solver.add(zgrid[p] == zgrid[q])
             case _:
                 raise NotImplementedError(f'Unknown rule: {rule.type}')
 
@@ -138,17 +129,17 @@ def part2():
     assert res == sat, f'Model not satisfied: {res}'
     m = solver.model()
 
-    seq = ''
+    out = ''
     for r in range(ROWS):
         for c in range(COLS):
             v = zgrid[r, c]
-            seq += str(v if isinstance(v, int) else m[v])
-        seq += '\n'
+            out += str(v if isinstance(v, int) else m[v])
+        out += '\n'
 
-    print(seq)
-    seq = re.sub(r'[0,2,4,6,8]', '.', seq)
-    print(seq)
-    return sum(map(int, re.findall(r'\d+', seq)))
+    print(out)
+    out = re.sub(r'[0,2,4,6,8]', '.', out)
+    print(out)
+    return sum(map(int, re.findall(r'\d+', out)))
 
 
 if len(sys.argv) > 1:
@@ -166,7 +157,7 @@ G = {
     for c, v in enumerate(line)
 }
 
-G_GUESSES = {
+GUESSES = {
     (r, c): int(v)
     for r, line in enumerate(vals_txt.split('\n'))
     for c, v in enumerate(line)
@@ -184,10 +175,7 @@ for letter, start in LETTER_STARTS.items():
     sequences[h.letter] = (h := extract_sequence(start, False))
 
 # Construct letter => Rule mappings
-rules: dict[str, Rule] = {
-    r.letter: r
-    for r in map(Rule, rules_txt.split('\n'))
-}
+rules = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
 # Identify which sequences are correct/incorrect
 correct: list[Sequence] = []
@@ -196,7 +184,7 @@ incorrect: list[Sequence] = []
 a1 = 0
 for letter, rule in rules.items():
     seq = sequences[letter]
-    value = int(''.join(str(G_GUESSES[c]) for c in seq.coords))
+    value = int(''.join(str(GUESSES[c]) for c in seq.coords))
     invalid = not rule.valid(value)
     a1 += value * invalid
     (correct, incorrect)[invalid].append(seq)
