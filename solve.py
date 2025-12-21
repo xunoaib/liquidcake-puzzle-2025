@@ -118,22 +118,18 @@ def part2():
         s = sequences[letter]
         z = Sum(ngrid[p] * 10**i for i, p in enumerate(s.coords[::-1]))
 
-        if False:
-            pass
-        elif 'cube' in line:
+        if 'cube' in line:
             ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             solver.add(z == t * t * t)
         elif 'square' in line:
             ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             solver.add(z == t * t)
         elif 'multiple' in line:
+            ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             last = int(line.split()[-1])
-            solver.add(z % last == 0)
+            solver.add(z == last * t)
         elif 'power' in line:
-            # ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
             base = int(line.split()[-1])
-            # print(f'{letter}: {base} ** {t} == {z}')
-            # solver.add(z == base**t)
             conds = []
             for e in count():
                 v = base**e
