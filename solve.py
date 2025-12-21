@@ -5,14 +5,7 @@ from dataclasses import dataclass
 from itertools import count
 from typing import override
 
-from joblib import Memory
 from z3 import And, Int, Or, Solver, Sum, sat
-
-memory = Memory('.joblib')
-
-
-def add(a: tuple[int, int], b: tuple[int, int]):
-    return (a[0] + b[0]) % ROWS, (a[1] + b[1]) % COLS
 
 
 @dataclass
@@ -54,13 +47,21 @@ class Rule:
             return f'<{self.letter} is {self.type} of {self.of}>'
 
 
-@memory.cache
 def is_power(x: int, b: int):
-    return any(b**e == x for e in range(x + 1))
+    if x < 1 or b < 2:
+        return False
+
+    while x % b == 0:
+        x //= b
+    return x == 1
 
 
 def is_palindrome(x: int):
     return all(a == b for a, b in zip(str(x), str(x)[::-1]))
+
+
+def add(a: tuple[int, int], b: tuple[int, int]):
+    return (a[0] + b[0]) % ROWS, (a[1] + b[1]) % COLS
 
 
 def extract_sequence(start: tuple[int, int], vert: bool):
@@ -100,10 +101,6 @@ def part2():
         solver.add(zgrid[p] <= 9)
 
     ztemps = []  # temporary variables
-
-    # for letter, rule in rules.items():
-    #     if letter not in incorrect_letters:
-    #         continue
 
     for letter in incorrect_letters:
         rule = rules[letter]
