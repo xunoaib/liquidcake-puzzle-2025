@@ -98,15 +98,15 @@ def part2_brute():
             if rule.valid(x) and re.match(f'^{template}$', str(x))
         ]
 
-        if letter == 't':
-            print(conds)
-
         candidates.append((letter, conds))
-        print(letter, template.rjust(7), str(len(conds)).rjust(4), rule)
 
-    import math
-    print(math.prod(len(conds) for _, conds in candidates))
+    # import math
+    # print(math.prod(len(conds) for _, conds in candidates))
 
+    candidates.sort(key=lambda t: (len(t[1]), t[0]))
+
+    for l, conds in candidates:
+        print(l, len(conds))
     exit()
 
     out = ''
