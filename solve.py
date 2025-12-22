@@ -27,7 +27,7 @@ class Rule:
         self._of = int(of) if of else None
         self.valid = {
             'square': lambda x: int(x**(1 / 2))**2 == x,
-            'cube': lambda x: int(x**(1 / 3))**3 == x,
+            'cube': lambda x: round(x**(1 / 3))**3 == x,
             'power': lambda x: is_power(x, b=self.of),
             'multiple': lambda x: x % self.of == 0,
             'palindrome': lambda x: str(x) == str(x)[::-1],
@@ -41,7 +41,7 @@ class Rule:
     @override
     def __repr__(self) -> str:
         if self._of is None:
-            return f'<{self.letter} is {self.type})>'
+            return f'<{self.letter} is {self.type}>'
         else:
             return f'<{self.letter} is {self.type} of {self.of}>'
 
@@ -70,7 +70,59 @@ def extract_sequence(start: tuple[int, int], vert: bool):
     return Sequence(letter, coords)
 
 
-def part2():
+def part2_brute():
+    correct_positions = {p for s in correct for p in s.coords}
+    incorrect_letters = {s.letter for s in incorrect}
+    incorrect_positions = {
+        p
+        for s in incorrect
+        for p in s.coords
+    } - correct_positions
+
+    zgrid = {p: GUESSES[p] for p in G if p in correct_positions}
+
+    candidates = []
+
+    for letter in sorted(incorrect_letters):
+        rule = rules[letter]
+        seq = sequences[letter]
+
+        digits = len(seq.coords)
+        template = ''.join(
+            str(v) if isinstance(v, int) else '.'
+            for v in map(zgrid.get, seq.coords)
+        )
+
+        conds = [
+            x for x in range(10**(digits - 1), 10**(digits + 1))
+            if rule.valid(x) and re.match(f'^{template}$', str(x))
+        ]
+
+        if letter == 't':
+            print(conds)
+
+        candidates.append((letter, conds))
+        print(letter, template.rjust(7), str(len(conds)).rjust(4), rule)
+
+    import math
+    print(math.prod(len(conds) for _, conds in candidates))
+
+    exit()
+
+    out = ''
+    for r in range(ROWS):
+        for c in range(COLS):
+            v = zgrid[r, c]
+            out += str(v if isinstance(v, int) else m[v])
+        out += '\n'
+
+    print(out)
+    out = re.sub(r'[0,2,4,6,8]', '.', out)
+    print(out)
+    return sum(map(int, re.findall(r'\d+', out)))
+
+
+def part2_z3():
     correct_positions = {p for s in correct for p in s.coords}
     incorrect_letters = {s.letter for s in incorrect}
     incorrect_positions = {
@@ -190,7 +242,8 @@ for letter, rule in rules.items():
     (correct, incorrect)[invalid].append(seq)
 
 print('part1:', a1)
-print('part2:', a2 := part2())
+# print('part2:', a2 := part2_z3())
+print('part2:', a2 := part2_brute())
 
 assert a1 == 1401106
 assert a2 == 517533251
