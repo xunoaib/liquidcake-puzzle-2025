@@ -80,21 +80,16 @@ def extract_sequence(start: Pos, vert: bool):
         coords.append(p)
 
     letter = G[start].upper() if vert else G[start].lower()
-    return Sequence(letter, coords, rules[letter])
+    return Sequence(letter, coords, RULES[letter])
 
 
 def resolve_intersections(fixed: dict[Pos, int]):
-    for p in sorted(G):
-        if p in fixed:
-            continue
-
+    for p in sorted(set(G) - set(fixed)):
         s0, s1 = SEQS_AT[p]
         i0 = s0.coords.index(p)
         i1 = s1.coords.index(p)
-
         c0 = {str(c)[i0] for c in s0.candidates(fixed)}
         c1 = {str(c)[i1] for c in s1.candidates(fixed)}
-
         cands = c0 & c1
 
         if len(cands) == 1:
@@ -104,7 +99,7 @@ def resolve_intersections(fixed: dict[Pos, int]):
 
 
 def part2():
-    init_correct_positions = {p for s in correct for p in s.coords}
+    init_correct_positions = {p for s in CORRECT for p in s.coords}
     fixed = {p: GUESSES[p] for p in G if p in init_correct_positions}
 
     while True:
@@ -156,31 +151,31 @@ COLS = 1 + max(c for _, c in G)
 LETTER_STARTS = {v: k for k, v in G.items() if v != '.'}
 
 # Construct letter => Rule mappings
-rules = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
+RULES = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
 # Collect vert/horiz letter sequences
-sequences = {}
+SEQUENCES = {}
 for letter, start in LETTER_STARTS.items():
-    sequences[v.letter] = (v := extract_sequence(start, True))
-    sequences[h.letter] = (h := extract_sequence(start, False))
+    SEQUENCES[v.letter] = (v := extract_sequence(start, True))
+    SEQUENCES[h.letter] = (h := extract_sequence(start, False))
 
 # find the two sequences associated with each position
 SEQS_AT = defaultdict(list)
-for seq in sequences.values():
+for seq in SEQUENCES.values():
     for p in seq.coords:
         SEQS_AT[p].append(seq)
 
 # Identify which sequences are correct/incorrect
-correct: list[Sequence] = []
-incorrect: list[Sequence] = []
+CORRECT: list[Sequence] = []
+INCORRECT: list[Sequence] = []
 
 a1 = 0
-for letter, rule in rules.items():
-    seq = sequences[letter]
+for letter, rule in RULES.items():
+    seq = SEQUENCES[letter]
     value = int(''.join(str(GUESSES[c]) for c in seq.coords))
     invalid = not rule.valid(value)
     a1 += value * invalid
-    (correct, incorrect)[invalid].append(seq)
+    (CORRECT, INCORRECT)[invalid].append(seq)
 
 print('part1:', a1)
 print('part2:', a2 := part2())
