@@ -112,7 +112,6 @@ def resolve_forced_moves(fixed: dict[Pos, int]):
 
 
 def resolve_intersections(fixed: dict[Pos, int]):
-    fixed = fixed.copy()
     for p in sorted(G):
         if p in fixed:
             continue
@@ -133,24 +132,31 @@ def resolve_intersections(fixed: dict[Pos, int]):
             print(f'Fixing {p} => {v}')
             fixed[p] = int(v)
 
-    return fixed
 
-
-def part2_smart():
-
-    # initial correct spots
+def part2():
     init_correct_positions = {p for s in correct for p in s.coords}
     fixed = {p: GUESSES[p] for p in G if p in init_correct_positions}
 
     while True:
         count = len(fixed)
         print('resolving...')
-        fixed = resolve_intersections(fixed)
+        resolve_intersections(fixed)
         if len(fixed) == count:
             break
 
     unfixed = set(G) - set(fixed)
-    print(unfixed)
+    assert not unfixed, f'Grid is not fully constrained (missing {len(unfixed)})'
+
+    out = ''.join(
+        ''.join(str(fixed[r, c]) for c in range(COLS)) + '\n'
+        for r in range(ROWS)
+    )
+
+    print(out)
+    out = re.sub(r'[0,2,4,6,8]', '.', out)
+    print(out)
+
+    return sum(map(int, re.findall(r'\d+', out)))
 
 
 if len(sys.argv) > 1:
@@ -207,7 +213,7 @@ for letter, rule in rules.items():
     (correct, incorrect)[invalid].append(seq)
 
 print('part1:', a1)
-print('part2:', a2 := part2_smart())
+print('part2:', a2 := part2())
 
 assert a1 == 1401106
 assert a2 == 517533251
