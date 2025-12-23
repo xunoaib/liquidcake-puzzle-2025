@@ -59,7 +59,7 @@ def candidates(sequence: Sequence, rule: Rule, fixed: dict[Pos, int]):
 
     for p in product(range(10), repeat=nfree):
         n = int(template.format(*map(str, p)))
-        if rule.valid(n):
+        if rule.valid(n) and len(str(n)) == len(sequence.coords):
             results.append(n)
     return results
 
@@ -91,6 +91,7 @@ def extract_sequence(start: Pos, vert: bool):
 def resolve_forced_moves(fixed: dict[Pos, int]):
     ''' Resolves all forced moves and returns a new dict '''
 
+    fixed = fixed.copy()
     unsolved = set(sorted(sequences))
     changed = True
 
@@ -110,17 +111,46 @@ def resolve_forced_moves(fixed: dict[Pos, int]):
     return fixed
 
 
+def resolve_intersections(fixed: dict[Pos, int]):
+    fixed = fixed.copy()
+    for p in sorted(G):
+        if p in fixed:
+            continue
+
+        s0, s1 = SEQS_AT[p]
+        r0, r1 = [rules[s.letter] for s in SEQS_AT[p]]
+
+        i0 = s0.coords.index(p)
+        i1 = s1.coords.index(p)
+
+        c0 = {str(c)[i0] for c in candidates(s0, r0, fixed)}
+        c1 = {str(c)[i1] for c in candidates(s1, r1, fixed)}
+
+        cands = c0 & c1
+
+        if len(cands) == 1:
+            v = list(cands)[0]
+            print(f'Fixing {p} => {v}')
+            fixed[p] = int(v)
+
+    return fixed
+
+
 def part2_smart():
 
     # initial correct spots
-    correct_positions = {p for s in correct for p in s.coords}
-    fixed = {p: GUESSES[p] for p in G if p in correct_positions}
+    init_correct_positions = {p for s in correct for p in s.coords}
+    fixed = {p: GUESSES[p] for p in G if p in init_correct_positions}
 
-    print(fixed.keys())
-    fixed = resolve_forced_moves(fixed)
-    print(fixed.keys())
+    while True:
+        count = len(fixed)
+        print('resolving...')
+        fixed = resolve_intersections(fixed)
+        if len(fixed) == count:
+            break
 
-    exit()
+    unfixed = set(G) - set(fixed)
+    print(unfixed)
 
 
 if len(sys.argv) > 1:
@@ -155,6 +185,12 @@ for letter, start in LETTER_STARTS.items():
     sequences[v.letter] = (v := extract_sequence(start, True))
     sequences[h.letter] = (h := extract_sequence(start, False))
 
+# find the two sequences associated with each position
+SEQS_AT = defaultdict(list)
+for seq in sequences.values():
+    for p in seq.coords:
+        SEQS_AT[p].append(seq)
+
 # Construct letter => Rule mappings
 rules = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
@@ -169,11 +205,6 @@ for letter, rule in rules.items():
     invalid = not rule.valid(value)
     a1 += value * invalid
     (correct, incorrect)[invalid].append(seq)
-
-seqs_at = defaultdict(list)
-for seq in sequences.values():
-    for p in seq.coords:
-        seqs_at[p].append(seq)
 
 print('part1:', a1)
 print('part2:', a2 := part2_smart())
