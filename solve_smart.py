@@ -88,15 +88,12 @@ def extract_sequence(start: Pos, vert: bool):
     return Sequence(letter, coords)
 
 
-def part2_smart():
+def resolve_forced_moves(fixed: dict[Pos, int]):
+    ''' Resolves all forced moves and returns a new dict '''
 
-    correct_positions = {p for s in correct for p in s.coords}
-
-    # Resolve all forced moves
-    fixed = {p: GUESSES[p] for p in G if p in correct_positions}
     unsolved = set(sorted(sequences))
-
     changed = True
+
     while changed:
         print('=== iteration ===')
         changed = False
@@ -109,6 +106,19 @@ def part2_smart():
                 for p, v in zip(seq.coords, str(cands[0])):
                     fixed[p] = int(v)
                 changed = True
+
+    return fixed
+
+
+def part2_smart():
+
+    # initial correct spots
+    correct_positions = {p for s in correct for p in s.coords}
+    fixed = {p: GUESSES[p] for p in G if p in correct_positions}
+
+    print(fixed.keys())
+    fixed = resolve_forced_moves(fixed)
+    print(fixed.keys())
 
     exit()
 
