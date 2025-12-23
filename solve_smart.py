@@ -8,12 +8,6 @@ from typing import override
 Pos = tuple[int, int]
 
 
-@dataclass
-class Sequence:
-    letter: str
-    coords: list[Pos]
-
-
 class Rule:
 
     def __init__(self, text):
@@ -47,17 +41,22 @@ class Rule:
             return f'<{self.letter} is {self.type} of {self.of}>'
 
 
-def candidates(sequence: Sequence, rule: Rule, fixed: dict[Pos, int]):
-    values = [fixed.get(p) for p in sequence.coords]
-    nfree = values.count(None)
-    template = ''.join(str(fixed.get(p, '{}')) for p in sequence.coords)
-    results = []
+@dataclass
+class Sequence:
+    letter: str
+    coords: list[Pos]
+    rule: Rule
 
-    for p in product(range(10), repeat=nfree):
-        n = int(template.format(*map(str, p)))
-        if rule.valid(n) and len(str(n)) == len(sequence.coords):
-            results.append(n)
-    return results
+    def candidates(self, fixed: dict[Pos, int]):
+        values = [fixed.get(p) for p in self.coords]
+        template = ''.join(str(fixed.get(p, '{}')) for p in self.coords)
+        results = []
+
+        for p in product(range(10), repeat=values.count(None)):
+            n = int(template.format(*map(str, p)))
+            if self.rule.valid(n) and len(str(n)) == len(self.coords):
+                results.append(n)
+        return results
 
 
 def is_power(x: int, b: int):
@@ -81,7 +80,7 @@ def extract_sequence(start: Pos, vert: bool):
         coords.append(p)
 
     letter = G[start].upper() if vert else G[start].lower()
-    return Sequence(letter, coords)
+    return Sequence(letter, coords, rules[letter])
 
 
 def resolve_intersections(fixed: dict[Pos, int]):
@@ -90,13 +89,11 @@ def resolve_intersections(fixed: dict[Pos, int]):
             continue
 
         s0, s1 = SEQS_AT[p]
-        r0, r1 = [rules[s.letter] for s in SEQS_AT[p]]
-
         i0 = s0.coords.index(p)
         i1 = s1.coords.index(p)
 
-        c0 = {str(c)[i0] for c in candidates(s0, r0, fixed)}
-        c1 = {str(c)[i1] for c in candidates(s1, r1, fixed)}
+        c0 = {str(c)[i0] for c in s0.candidates(fixed)}
+        c1 = {str(c)[i1] for c in s1.candidates(fixed)}
 
         cands = c0 & c1
 
@@ -158,6 +155,9 @@ COLS = 1 + max(c for _, c in G)
 
 LETTER_STARTS = {v: k for k, v in G.items() if v != '.'}
 
+# Construct letter => Rule mappings
+rules = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
+
 # Collect vert/horiz letter sequences
 sequences = {}
 for letter, start in LETTER_STARTS.items():
@@ -169,9 +169,6 @@ SEQS_AT = defaultdict(list)
 for seq in sequences.values():
     for p in seq.coords:
         SEQS_AT[p].append(seq)
-
-# Construct letter => Rule mappings
-rules = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
 # Identify which sequences are correct/incorrect
 correct: list[Sequence] = []
