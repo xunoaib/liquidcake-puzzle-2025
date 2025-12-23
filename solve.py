@@ -1,7 +1,7 @@
 import re
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 from typing import override
 
@@ -46,17 +46,34 @@ class Sequence:
     letter: str
     coords: list[Pos]
     rule: Rule
+    _candidates: list[int] | None = None
 
-    def candidates(self, fixed: dict[Pos, int]):
-        values = [fixed.get(p) for p in self.coords]
-        template = ''.join(str(fixed.get(p, '{}')) for p in self.coords)
-        results = []
-
-        for p in product(range(10), repeat=values.count(None)):
+    def all_candidates(self):
+        template = '{}' * len(self.coords)
+        candidates = []
+        for p in product(range(10), repeat=len(self.coords)):
             n = int(template.format(*map(str, p)))
             if self.rule.valid(n) and len(str(n)) == len(self.coords):
-                results.append(n)
-        return results
+                candidates.append(n)
+        return candidates
+
+    def new_candidates(self, fixed: dict[Pos, int]):
+        assert self._candidates
+        template = ''.join(str(fixed.get(p, '.')) for p in self.coords)
+        candidates = []
+        for n in map(str, self._candidates):
+            if re.match(fr'^{template}$', n):
+                candidates.append(n)
+        return candidates
+
+    def candidates(self, fixed: dict[Pos, int]):
+        if self._candidates is None:
+            print('generating initial candidates')
+            self._candidates = self.all_candidates()
+            print('filtering new candidates')
+
+        self._candidates = self.new_candidates(fixed)
+        return self._candidates.copy()
 
 
 def is_power(x: int, b: int):
