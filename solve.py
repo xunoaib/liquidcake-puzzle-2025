@@ -70,98 +70,7 @@ def extract_sequence(start: tuple[int, int], vert: bool):
     return Sequence(letter, coords)
 
 
-def part2_brute():
-    correct_positions = {p for s in correct for p in s.coords}
-    incorrect_letters = {s.letter for s in incorrect}
-    incorrect_positions = {
-        p
-        for s in incorrect
-        for p in s.coords
-    } - correct_positions
-
-    zgrid = {
-        p: (GUESSES[p] if p in correct_positions else Int(f'p_{p[0]}_{p[1]}'))
-        for p in G
-    }
-
-    candidates = []
-    for letter in sorted(incorrect_letters):
-        rule = rules[letter]
-        seq = sequences[letter]
-        digits = len(seq.coords)
-        template = ''.join(
-            str(v) if isinstance(v, int) else '.'
-            for v in map(zgrid.get, seq.coords)
-        )
-        conds = [
-            x for x in range(10**(digits - 1), 10**(digits + 1))
-            if rule.valid(x) and re.match(f'^{template}$', str(x))
-        ]
-        candidates.append((letter, conds))
-    candidates.sort(key=lambda t: (len(t[1]), t[0]))
-
-    candidates = {l: cands for l, cands in candidates}
-
-    # apply Z3 using candidate constraintsr
-    solver = Solver()
-    ztemps = []
-
-    for letter in incorrect_letters:
-        rule = rules[letter]
-        seq = sequences[letter]
-
-        z = Sum(zgrid[p] * 10**i for i, p in enumerate(seq.coords[::-1]))
-
-        if len(candidates[letter]) < 100:
-            solver.add(Or(z == c for c in candidates[letter]))
-
-        else:
-            print('using fancier method for', letter, rule)
-            zdigits = len(seq.coords)
-            match rule.type:
-                case 'cube':
-                    ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-                    solver.add(z == t * t * t)
-                case 'square':
-                    ztemps.append(t := Int(f'tmp_{len(ztemps)}'))
-                    solver.add(z == t * t)
-                case 'multiple':
-                    solver.add(z % rule.of == 0)
-                case 'power':
-                    b = rule.of
-                    lo = ceil((zdigits - 1) / log10(b))
-                    hi = floor(zdigits / log10(b))
-                    solver.add(Or(z == b**exp for exp in range(lo, hi + 1)))
-                case 'palindrome':
-                    for p, q in zip(seq.coords, seq.coords[::-1]):  # redundant
-                        solver.add(zgrid[p] == zgrid[q])
-                case _:
-                    raise NotImplementedError(f'Unknown rule: {rule.type}')
-
-    vars = [v for v in zgrid.values() if not isinstance(v, int)]
-
-    print('solving')
-    while solver.check() == sat:
-        m = solver.model()
-        print('found solution')
-        solver.add(Or([v != m[v] for v in vars]))
-
-    exit()
-
-    out = ''
-    for r in range(ROWS):
-        for c in range(COLS):
-            v = zgrid[r, c]
-            out += str(v if isinstance(v, int) else m[v])
-        out += '\n'
-
-    print(out)
-    out = re.sub(r'[0,2,4,6,8]', '.', out)
-    print(out)
-    return sum(map(int, re.findall(r'\d+', out)))
-
-
-def part2_z3():
+def part2():
     correct_positions = {p for s in correct for p in s.coords}
     incorrect_letters = {s.letter for s in incorrect}
     incorrect_positions = {
@@ -281,8 +190,7 @@ for letter, rule in rules.items():
     (correct, incorrect)[invalid].append(seq)
 
 print('part1:', a1)
-# print('part2:', a2 := part2_z3())
-print('part2:', a2 := part2_brute())
+print('part2:', a2 := part2())
 
 assert a1 == 1401106
 assert a2 == 517533251
