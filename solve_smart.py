@@ -1,12 +1,9 @@
 import re
 import sys
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import product
-from math import ceil, floor, log10
 from typing import override
-
-from z3 import Int, Or, Solver, Sum, sat
 
 Pos = tuple[int, int]
 
@@ -51,7 +48,6 @@ class Rule:
 
 
 def candidates(sequence: Sequence, rule: Rule, fixed: dict[Pos, int]):
-
     values = [fixed.get(p) for p in sequence.coords]
     nfree = values.count(None)
     template = ''.join(str(fixed.get(p, '{}')) for p in sequence.coords)
@@ -86,29 +82,6 @@ def extract_sequence(start: Pos, vert: bool):
 
     letter = G[start].upper() if vert else G[start].lower()
     return Sequence(letter, coords)
-
-
-def resolve_forced_moves(fixed: dict[Pos, int]):
-    ''' Resolves all forced moves and returns a new dict '''
-
-    fixed = fixed.copy()
-    unsolved = set(sorted(sequences))
-    changed = True
-
-    while changed:
-        print('=== iteration ===')
-        changed = False
-        for letter in sorted(unsolved):
-            seq = sequences[letter]
-            cands = candidates(seq, rules[letter], fixed)
-            if len(cands) == 1:
-                print('Fixing', letter)
-                unsolved.remove(letter)
-                for p, v in zip(seq.coords, str(cands[0])):
-                    fixed[p] = int(v)
-                changed = True
-
-    return fixed
 
 
 def resolve_intersections(fixed: dict[Pos, int]):
