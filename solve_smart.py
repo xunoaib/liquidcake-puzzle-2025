@@ -91,11 +91,24 @@ def extract_sequence(start: Pos, vert: bool):
 def part2_smart():
 
     correct_positions = {p for s in correct for p in s.coords}
-    fixed = {p: GUESSES[p] for p in G if p in correct_positions}
 
-    for letter in sorted(sequences):
-        cands = candidates(sequences[letter], rules[letter], fixed)
-        print(letter, len(cands))
+    # Resolve all forced moves
+    fixed = {p: GUESSES[p] for p in G if p in correct_positions}
+    unsolved = set(sorted(sequences))
+
+    changed = True
+    while changed:
+        print('=== iteration ===')
+        changed = False
+        for letter in sorted(unsolved):
+            seq = sequences[letter]
+            cands = candidates(seq, rules[letter], fixed)
+            if len(cands) == 1:
+                print('Fixing', letter)
+                unsolved.remove(letter)
+                for p, v in zip(seq.coords, str(cands[0])):
+                    fixed[p] = int(v)
+                changed = True
 
     exit()
 
