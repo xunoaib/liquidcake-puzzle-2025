@@ -94,14 +94,11 @@ def resolve_intersections(fixed: dict[Pos, int]):
 
         if len(cands) == 1:
             v = list(cands)[0]
-            print(f'Fixing {p} => {v}')
             fixed[p] = int(v)
+            print(f'Fixing {p} => {v} ({len(G)-len(fixed)} left)')
 
 
-def part2():
-    init_correct_positions = {p for s in CORRECT for p in s.coords}
-    fixed = {p: GUESSES[p] for p in G if p in init_correct_positions}
-
+def part2(fixed: dict[Pos, int]):
     while True:
         count = len(fixed)
         print('resolving...')
@@ -110,13 +107,45 @@ def part2():
             break
 
     unfixed = set(G) - set(fixed)
-    assert not unfixed, f'Grid is not fully constrained (missing {len(unfixed)})'
+    if unfixed:
+        print(
+            f'\n\033[93mWarn: Some cells are not fully constrained: {unfixed}\033[0m'
+        )
+        for p in unfixed:
+            s0, s1 = SEQS_AT[p]
+            i0 = s0.coords.index(p)
+            i1 = s1.coords.index(p)
+            c0 = {str(c)[i0] for c in s0.candidates(fixed)}
+            c1 = {str(c)[i1] for c in s1.candidates(fixed)}
+            cands = c0 & c1
+
+            print()
+            print('s0 =', s0)
+            print('s1 =', s1)
+            print()
+            print(
+                's0 candidates: str index ', s0.coords.index(p), 'of',
+                s0.candidates(fixed)
+            )
+            print(
+                's1 candidates: str index ', s1.coords.index(p), 'of',
+                s1.candidates(fixed)
+            )
+            print()
+            print('s0 cell candidates:', c0)
+            print('s1 cell candidates:', c1)
+            print('final cell candidates =', cands)
+
+            v = int(list(cands)[0])
+            print(f'Arbitrarily fixing {p} => {v}')
+            fixed[p] = v
 
     out = ''.join(
         ''.join(str(fixed[r, c]) for c in range(COLS)) + '\n'
         for r in range(ROWS)
     )
 
+    print()
     print(out)
     out = re.sub(r'[0,2,4,6,8]', '.', out)
     print(out)
@@ -160,14 +189,13 @@ for letter, start in LETTER_STARTS.items():
     SEQUENCES[h.letter] = (h := extract_sequence(start, False))
 
 # find the two sequences associated with each position
-SEQS_AT = defaultdict(list)
+SEQS_AT: dict[Pos, list[Sequence]] = defaultdict(list)
 for seq in SEQUENCES.values():
     for p in seq.coords:
         SEQS_AT[p].append(seq)
 
 # Identify which sequences are correct/incorrect
-CORRECT: list[Sequence] = []
-INCORRECT: list[Sequence] = []
+CORRECT_POSITIONS: set[Pos] = set()
 
 a1 = 0
 for letter, rule in RULES.items():
@@ -175,10 +203,14 @@ for letter, rule in RULES.items():
     value = int(''.join(str(GUESSES[c]) for c in seq.coords))
     invalid = not rule.valid(value)
     a1 += value * invalid
-    (CORRECT, INCORRECT)[invalid].append(seq)
+    if not invalid:
+        CORRECT_POSITIONS.update({p for p in seq.coords})
+
+fixed = {p: GUESSES[p] for p in G if p in CORRECT_POSITIONS}
+# fixed = {}  # also possible
 
 print('part1:', a1)
-print('part2:', a2 := part2())
+print('part2:', a2 := part2(fixed))
 
 assert a1 == 1401106
 assert a2 == 517533251
