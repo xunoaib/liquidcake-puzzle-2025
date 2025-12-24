@@ -1,7 +1,7 @@
 import re
 import sys
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import product
 from typing import override
 
@@ -58,23 +58,20 @@ class Sequence:
                 candidates.append(s)
         return candidates
 
-    def new_candidates(self, fixed: dict[Pos, int]) -> list[str]:
+    def new_candidates(self, fixed: dict[Pos, str]) -> list[str]:
         assert self._candidates
-        template = ''.join(str(fixed.get(p, '.')) for p in self.coords)
-        candidates = []
-        for n in self._candidates:
-            if re.match(fr'^{template}$', n):
-                candidates.append(n)
-        return candidates
+        vals = list(map(fixed.get, self.coords))
+        return [
+            n for n in self._candidates
+            if all(v == c for v, c in zip(vals, n) if v is not None)
+        ]
 
-    def candidates(self, fixed: dict[Pos, int]):
+    def candidates(self, fixed: dict[Pos, str]):
         if self._candidates is None:
-            print('generating initial candidates')
             self._candidates = self.all_candidates()
-            print('filtering new candidates')
 
         self._candidates = self.new_candidates(fixed)
-        return self._candidates.copy()
+        return self._candidates
 
 
 def is_power(x: int, b: int):
@@ -101,7 +98,7 @@ def extract_sequence(start: Pos, vert: bool):
     return Sequence(letter, coords, RULES[letter])
 
 
-def resolve_intersections(fixed: dict[Pos, int]):
+def resolve_intersections(fixed: dict[Pos, str]):
     for p in sorted(set(G) - set(fixed)):
         s0, s1 = SEQS_AT[p]
         i0 = s0.coords.index(p)
@@ -111,12 +108,11 @@ def resolve_intersections(fixed: dict[Pos, int]):
         cands = c0 & c1
 
         if len(cands) == 1:
-            v = list(cands)[0]
-            fixed[p] = int(v)
+            fixed[p] = (v := cands.pop())
             print(f'Fixing {p} => {v} ({len(G)-len(fixed)} left)')
 
 
-def part2(fixed: dict[Pos, int]):
+def part2(fixed: dict[Pos, str]):
     while True:
         count = len(fixed)
         print('resolving...')
@@ -154,9 +150,8 @@ def part2(fixed: dict[Pos, int]):
             print('s1 cell candidates:', c1)
             print('final cell candidates =', cands)
 
-            v = int(list(cands)[0])
+            fixed[p] = (v := cands.pop())
             print(f'Arbitrarily fixing {p} => {v}')
-            fixed[p] = v
 
     out = ''.join(
         ''.join(str(fixed[r, c]) for c in range(COLS)) + '\n'
@@ -187,7 +182,7 @@ G = {
 }
 
 GUESSES = {
-    (r, c): int(v)
+    (r, c): v
     for r, line in enumerate(vals_txt.split('\n'))
     for c, v in enumerate(line)
 }
