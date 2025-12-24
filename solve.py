@@ -62,7 +62,7 @@ class Sequence:
 
     def filter_candidates(self, known: dict[Pos, str]):
         assert self._all
-        vals = [known.get(p) for p in self.coords]
+        vals = list(map(known.get, self.coords))
         return [
             c for c in self._all
             if all(v is None or v == c for v, c in zip(vals, c))
