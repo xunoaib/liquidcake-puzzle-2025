@@ -46,22 +46,23 @@ class Sequence:
     letter: str
     coords: list[Pos]
     rule: Rule
-    _candidates: list[int] | None = None
+    _candidates: list[str] | None = None
 
-    def all_candidates(self):
+    def all_candidates(self) -> list[str]:
         template = '{}' * len(self.coords)
         candidates = []
         for p in product(range(10), repeat=len(self.coords)):
-            n = int(template.format(*map(str, p)))
+            s = template.format(*map(str, p))
+            n = int(s)
             if self.rule.valid(n) and len(str(n)) == len(self.coords):
-                candidates.append(n)
+                candidates.append(s)
         return candidates
 
-    def new_candidates(self, fixed: dict[Pos, int]):
+    def new_candidates(self, fixed: dict[Pos, int]) -> list[str]:
         assert self._candidates
         template = ''.join(str(fixed.get(p, '.')) for p in self.coords)
         candidates = []
-        for n in map(str, self._candidates):
+        for n in self._candidates:
             if re.match(fr'^{template}$', n):
                 candidates.append(n)
         return candidates
