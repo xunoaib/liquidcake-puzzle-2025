@@ -2,7 +2,6 @@ import re
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import product
 from typing import override
 
 Pos = tuple[int, int]
@@ -41,25 +40,29 @@ class Sequence:
     letter: str
     coords: list[Pos]
     rule: Rule
-    index: dict[Pos, int] = field(init=False)
-    _all: list[str] = field(init=False, default_factory=list)
+    index: dict[Pos, int] = field(init=False, repr=False)
+    _all: list[str] = field(init=False, default_factory=list, repr=False)
 
     def __post_init__(self):
         self.index = {p: i for i, p in enumerate(self.coords)}
 
     def all_candidates(self) -> list[str]:
-        if not self._all:
-            if self.rule.type == 'square':
-                return list(exponent_candidates(len(self.coords), 2))
-            if self.rule.type == 'cube':
-                return list(exponent_candidates(len(self.coords), 3))
 
-            for digits in product('0123456789', repeat=len(self.coords)):
-                if digits[0] == '0':
-                    continue
-                s = ''.join(digits)
-                if self.rule.valid(int(s)):
-                    self._all.append(s)
+        match self.rule.type:
+            case 'square':
+                g = exponent_candidates(len(self.coords), 2)
+            case 'cube':
+                g = exponent_candidates(len(self.coords), 3)
+            case 'palindrome':
+                g = palindrome_candidates(len(self.coords))
+            case 'power':
+                g = power_candidates(self.rule.of, len(self.coords))
+            case 'multiple':
+                g = multiple_candidates(self.rule.of, len(self.coords))
+            case _:
+                raise ValueError(f'Unknown rule type: {self.rule.type}')
+
+        self._all = list(g)
         return self._all
 
     def filter_candidates(self, known: dict[Pos, str]):
@@ -84,6 +87,29 @@ def exponent_candidates(ndigits, exponent):
         v = k**exponent
         if len(str(v)) == ndigits:
             yield str(v)
+
+
+def palindrome_candidates(ndigits):
+    half = (ndigits + 1) // 2
+    for h in range(10**(half - 1), 10**half):
+        s = str(h)
+        yield s + s[-2::-1] if ndigits % 2 else s + s[::-1]
+
+
+def power_candidates(b, ndigits):
+    v = b
+    while len(str(v)) < ndigits:
+        v *= b
+    while len(str(v)) == ndigits:
+        yield str(v)
+        v *= b
+
+
+def multiple_candidates(b, ndigits):
+    lo = (10**(ndigits - 1) + b - 1) // b * b
+    hi = 10**ndigits
+    for v in range(lo, hi, b):
+        yield str(v)
 
 
 def is_power(x: int, b: int):
