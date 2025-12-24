@@ -88,25 +88,26 @@ def add(a: Pos, b: Pos):
 
 
 def extract_sequence(start: Pos, vert: bool):
+    letter = STARTS[start].upper() if vert else STARTS[start].lower()
     offset = (1, 0) if vert else (0, 1)
-
     coords = [start]
-    while (p := add(coords[-1], offset)) not in LETTER_STARTS.values():
+    while (p := add(coords[-1], offset)) not in STARTS:
         coords.append(p)
-
-    letter = G[start].upper() if vert else G[start].lower()
     return Sequence(letter, coords, RULES[letter])
 
 
 def resolve_intersections(fixed: dict[Pos, str]):
-    for p in sorted(set(G) - set(fixed)):
-        cands = intersection_candidates(p, fixed)
+    changed = False
+    for p in sorted(set(GUESSES) - set(fixed)):
+        cands = cell_candidates(p, fixed)
         if len(cands) == 1:
             fixed[p] = (v := cands.pop())
-            print(f'Fixing {p} => {v} ({len(G)-len(fixed)} left)')
+            changed = True
+            print(f'Fixing {p} => {v} ({len(GUESSES)-len(fixed)} left)')
+    return changed
 
 
-def intersection_candidates(p: Pos, fixed: dict[Pos, str]):
+def cell_candidates(p: Pos, fixed: dict[Pos, str]):
     s0, s1 = SEQS_AT[p]
     i0 = s0.coords.index(p)
     i1 = s1.coords.index(p)
@@ -116,18 +117,16 @@ def intersection_candidates(p: Pos, fixed: dict[Pos, str]):
 
 
 def part2(fixed: dict[Pos, str]):
-    while True:
-        count = len(fixed)
-        print('resolving...')
-        resolve_intersections(fixed)
-        if len(fixed) == count:
-            break
 
-    if (unfixed := set(G) - set(fixed)):
+    print('Resolving...')
+    while resolve_intersections(fixed):
+        print('Resolving...')
+
+    if (unfixed := set(GUESSES) - set(fixed)):
         print(f'\n\033[93mWarn: Some cells are not fully constrained\033[0m')
         print('Cells:', unfixed)
         for p in unfixed:
-            cands = intersection_candidates(p, fixed)
+            cands = cell_candidates(p, fixed)
             print(f'cell candidates @ {p} = {cands}')
             fixed[p] = (v := cands.pop())
             print(f'Arbitrarily fixing {p} => {v}')
@@ -154,10 +153,10 @@ else:
 
 grid_txt, rules_txt, vals_txt = file.read().strip().split('\n\n')
 
-G = {
+STARTS = {
     (r, c): v
     for r, line in enumerate(grid_txt.split('\n'))
-    for c, v in enumerate(line)
+    for c, v in enumerate(line) if v != '.'
 }
 
 GUESSES = {
@@ -166,43 +165,35 @@ GUESSES = {
     for c, v in enumerate(line)
 }
 
-ROWS = 1 + max(r for r, _ in G)
-COLS = 1 + max(c for _, c in G)
+ROWS = 1 + max(r for r, _ in GUESSES)
+COLS = 1 + max(c for _, c in GUESSES)
 
-LETTER_STARTS = {v: k for k, v in G.items() if v != '.'}
-
-# Construct letter => Rule mappings
 RULES = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
 # Collect vert/horiz letter sequences
-SEQUENCES = {}
-for letter, start in LETTER_STARTS.items():
-    SEQUENCES[v.letter] = (v := extract_sequence(start, True))
-    SEQUENCES[h.letter] = (h := extract_sequence(start, False))
-
-# find the two sequences associated with each position
 SEQS_AT: dict[Pos, list[Sequence]] = defaultdict(list)
-for seq in SEQUENCES.values():
-    for p in seq.coords:
-        SEQS_AT[p].append(seq)
+sequences = []
+for pos, ch in STARTS.items():
+    if ch != '.':
+        for dir in [True, False]:
+            seq = extract_sequence(pos, dir)
+            sequences.append(seq)
+            for p in seq.coords:
+                SEQS_AT[p].append(seq)
 
-# Identify which sequences are correct/incorrect
-CORRECT_POSITIONS: set[Pos] = set()
-
+fixed = {}
 a1 = 0
-for letter, rule in RULES.items():
-    seq = SEQUENCES[letter]
-    value = int(''.join(str(GUESSES[c]) for c in seq.coords))
-    invalid = not rule.valid(value)
-    a1 += value * invalid
-    if not invalid:
-        CORRECT_POSITIONS.update({p for p in seq.coords})
 
-fixed = {p: GUESSES[p] for p in G if p in CORRECT_POSITIONS}
-# fixed = {}  # also possible
+for seq in sequences:
+    value = int(''.join(GUESSES[p] for p in seq.coords))
+    if seq.rule.valid(value):
+        fixed.update({p: GUESSES[p] for p in seq.coords})
+    else:
+        a1 += value
 
 print('part1:', a1)
 print('part2:', a2 := part2(fixed))
+# print('part2:', a2 := part2({}))  # also possible
 
 assert a1 == 1401106
 assert a2 == 517533251
