@@ -44,14 +44,14 @@ class Sequence:
     _candidates: list[str] | None = None
 
     def all_candidates(self) -> list[str]:
-        template = '{}' * len(self.coords)
-        candidates = []
-        for p in product(range(10), repeat=len(self.coords)):
-            s = template.format(*map(str, p))
-            n = int(s)
-            if self.rule.valid(n) and len(str(n)) == len(self.coords):
-                candidates.append(s)
-        return candidates
+        out = []
+        for digits in product('0123456789', repeat=len(self.coords)):
+            if digits[0] == '0':
+                continue
+            s = ''.join(digits)
+            if self.rule.valid(int(s)):
+                out.append(s)
+        return out
 
     def new_candidates(self, fixed: dict[Pos, str]) -> list[str]:
         assert self._candidates
