@@ -10,35 +10,30 @@ Pos = tuple[int, int]
 
 class Rule:
 
+    RULES = {
+        'square': lambda x, _: int(x**(1 / 2))**2 == x,
+        'cube': lambda x, _: round(x**(1 / 3))**3 == x,
+        'power': lambda x, b: is_power(x, b),
+        'multiple': lambda x, b: x % b == 0,
+        'palindrome': lambda x, _: str(x) == str(x)[::-1],
+    }
+
     def __init__(self, text):
         m = re.match(
-            r'(.*?) is a (square|cube|power|multiple|palindrome).*?(\d+)?$',
+            r'(.*?) is a (square|cube|power|multiple|palindrome)(?: of (\d+))?$',
             text
         )
-        assert m
-        letter, _type, of = m.groups()
-        self.letter = letter
-        self.type = _type
-        self._of = int(of) if of else None
-        self.valid = {
-            'square': lambda x: int(x**(1 / 2))**2 == x,
-            'cube': lambda x: round(x**(1 / 3))**3 == x,
-            'power': lambda x: is_power(x, b=self.of),
-            'multiple': lambda x: x % self.of == 0,
-            'palindrome': lambda x: str(x) == str(x)[::-1],
-        }[_type]
+        assert m, text
+        self.letter, self.type, of = m.groups()
+        self.of = int(of) if of else None
 
-    @property
-    def of(self):
-        assert self._of is not None
-        return self._of
+    def valid(self, x: int):
+        return self.RULES[self.type](x, self.of)
 
     @override
     def __repr__(self) -> str:
-        if self._of is None:
-            return f'<{self.letter} is {self.type}>'
-        else:
-            return f'<{self.letter} is {self.type} of {self.of}>'
+        of = f' of {self.of}' if self.of else ''
+        return f'<{self.letter} is {self.type}{of}>'
 
 
 @dataclass
