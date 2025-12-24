@@ -1,7 +1,7 @@
 import re
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 from typing import override
 
@@ -42,6 +42,10 @@ class Sequence:
     coords: list[Pos]
     rule: Rule
     _candidates: list[str] | None = None
+    index: dict[Pos, int] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.index = {p: i for i, p in enumerate(self.coords)}
 
     def all_candidates(self) -> list[str]:
         out = []
@@ -103,8 +107,8 @@ def resolve_intersections(fixed: dict[Pos, str]):
 
 def cell_candidates(p: Pos, fixed: dict[Pos, str]):
     s0, s1 = SEQS_AT[p]
-    i0 = s0.coords.index(p)
-    i1 = s1.coords.index(p)
+    i0 = s0.index[p]
+    i1 = s1.index[p]
     c0 = {str(c)[i0] for c in s0.candidates(fixed)}
     c1 = {str(c)[i1] for c in s1.candidates(fixed)}
     return c0 & c1
