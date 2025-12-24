@@ -14,6 +14,14 @@ RULE_PREDICATES = {
     'palindrome': lambda x, _: str(x) == str(x)[::-1],
 }
 
+CANDIDATE_FUNCS = {
+    'square': lambda n, _: exponent_candidates(n, 2),
+    'cube': lambda n, _: exponent_candidates(n, 3),
+    'palindrome': lambda n, _: palindrome_candidates(n),
+    'power': lambda n, b: power_candidates(n, b),
+    'multiple': lambda n, b: multiple_candidates(n, b),
+}
+
 
 class Rule:
 
@@ -47,22 +55,9 @@ class Sequence:
         self.index = {p: i for i, p in enumerate(self.coords)}
 
     def all_candidates(self) -> list[str]:
-
-        match self.rule.type:
-            case 'square':
-                g = exponent_candidates(len(self.coords), 2)
-            case 'cube':
-                g = exponent_candidates(len(self.coords), 3)
-            case 'palindrome':
-                g = palindrome_candidates(len(self.coords))
-            case 'power':
-                g = power_candidates(self.rule.of, len(self.coords))
-            case 'multiple':
-                g = multiple_candidates(self.rule.of, len(self.coords))
-            case _:
-                raise ValueError(f'Unknown rule type: {self.rule.type}')
-
-        self._all = list(g)
+        self._all = list(
+            CANDIDATE_FUNCS[self.rule.type](len(self.coords), self.rule.of)
+        )
         return self._all
 
     def filter_candidates(self, known: dict[Pos, str]):
@@ -96,7 +91,7 @@ def palindrome_candidates(ndigits):
         yield s + s[-2::-1] if ndigits % 2 else s + s[::-1]
 
 
-def power_candidates(b, ndigits):
+def power_candidates(ndigits, b):
     v = b
     while len(str(v)) < ndigits:
         v *= b
@@ -105,7 +100,7 @@ def power_candidates(b, ndigits):
         v *= b
 
 
-def multiple_candidates(b, ndigits):
+def multiple_candidates(ndigits, b):
     lo = (10**(ndigits - 1) + b - 1) // b * b
     hi = 10**ndigits
     for v in range(lo, hi, b):
@@ -168,7 +163,9 @@ def part2(known: dict[Pos, str]):
             known[p] = next(iter(cands))
             print(f'Arbitrarily fixing {p} => {known[p]}')
 
-    out = grid_to_str(known)
+    out = '\n'.join(
+        ''.join(known[r, c] for c in range(COLS)) for r in range(ROWS)
+    )
     masked = re.sub(r'[0,2,4,6,8]', '.', out)
 
     print()
@@ -178,12 +175,6 @@ def part2(known: dict[Pos, str]):
     print()
 
     return sum(map(int, re.findall(r'\d+', masked)))
-
-
-def grid_to_str(grid: dict[Pos, str]):
-    return '\n'.join(
-        ''.join(grid[r, c] for c in range(COLS)) for r in range(ROWS)
-    )
 
 
 if len(sys.argv) > 1:
@@ -201,6 +192,8 @@ STARTS = {
     for c, v in enumerate(line) if v != '.'
 }
 
+RULES = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
+
 GUESSES = {
     (r, c): v
     for r, line in enumerate(vals_txt.split('\n'))
@@ -210,16 +203,14 @@ GUESSES = {
 ROWS = 1 + max(r for r, _ in GUESSES)
 COLS = 1 + max(c for _, c in GUESSES)
 
-RULES = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
-
 a1 = 0
 known = {}
 
 # Collect vert/horiz letter sequences
 SEQS_AT: dict[Pos, list[Sequence]] = defaultdict(list)
 for pos, ch in STARTS.items():
-    for dir in [True, False]:
-        seq = extract_sequence(pos, dir)
+    for vert in [True, False]:
+        seq = extract_sequence(pos, vert)
         for p in seq.coords:
             SEQS_AT[p].append(seq)
 
@@ -230,9 +221,10 @@ for pos, ch in STARTS.items():
         else:
             a1 += value
 
+# known = {}  # also solvable w/o any values
+
 print('part1:', a1)
 print('part2:', a2 := part2(known))  # fix known values
-# print('part2:', a2 := part2({}))  # also solvable w/o any values
 
 assert a1 == 1401106
 assert a2 == 517533251
