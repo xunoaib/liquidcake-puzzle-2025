@@ -7,16 +7,16 @@ from typing import override
 
 Pos = tuple[int, int]
 
+RULE_PREDICATES = {
+    'square': lambda x, _: int(x**(1 / 2))**2 == x,
+    'cube': lambda x, _: round(x**(1 / 3))**3 == x,
+    'power': lambda x, b: is_power(x, b),
+    'multiple': lambda x, b: x % b == 0,
+    'palindrome': lambda x, _: str(x) == str(x)[::-1],
+}
+
 
 class Rule:
-
-    RULES = {
-        'square': lambda x, _: int(x**(1 / 2))**2 == x,
-        'cube': lambda x, _: round(x**(1 / 3))**3 == x,
-        'power': lambda x, b: is_power(x, b),
-        'multiple': lambda x, b: x % b == 0,
-        'palindrome': lambda x, _: str(x) == str(x)[::-1],
-    }
 
     def __init__(self, text):
         m = re.match(
@@ -28,7 +28,7 @@ class Rule:
         self.of = int(of) if of else None
 
     def valid(self, x: int):
-        return self.RULES[self.type](x, self.of)
+        return RULE_PREDICATES[self.type](x, self.of)
 
     @override
     def __repr__(self) -> str:
@@ -41,35 +41,35 @@ class Sequence:
     letter: str
     coords: list[Pos]
     rule: Rule
-    _candidates: list[str] | None = None
-    index: dict[Pos, int] = field(default_factory=dict)
+    index: dict[Pos, int] = field(init=False)
+    _all: list[str] = field(init=False, default_factory=list)
 
     def __post_init__(self):
         self.index = {p: i for i, p in enumerate(self.coords)}
 
     def all_candidates(self) -> list[str]:
-        out = []
-        for digits in product('0123456789', repeat=len(self.coords)):
-            if digits[0] == '0':
-                continue
-            s = ''.join(digits)
-            if self.rule.valid(int(s)):
-                out.append(s)
-        return out
+        if not self._all:
+            for digits in product('0123456789', repeat=len(self.coords)):
+                if digits[0] == '0':
+                    continue
+                s = ''.join(digits)
+                if self.rule.valid(int(s)):
+                    self._all.append(s)
+        return self._all
 
     def filter_candidates(self, known: dict[Pos, str]):
-        assert self._candidates
+        assert self._all
         vals = [known.get(p) for p in self.coords]
         return [
-            c for c in self._candidates
+            c for c in self._all
             if all(v is None or v == c for v, c in zip(vals, c))
         ]
 
     def candidates(self, known: dict[Pos, str]):
-        if self._candidates is None:
-            self._candidates = self.all_candidates()
-        self._candidates = self.filter_candidates(known)
-        return self._candidates
+        if not self._all:
+            self._all = self.all_candidates()
+        self._all = self.filter_candidates(known)
+        return self._all
 
 
 def is_power(x: int, b: int):
@@ -116,11 +116,10 @@ def cell_candidates(p: Pos, known: dict[Pos, str]):
 
 def part2(known: dict[Pos, str]):
 
-    print('Resolving...')
     while resolve_intersections(known):
-        print('Resolving...')
+        pass
 
-    if (unknown := set(GUESSES) - set(known)):
+    if unknown := set(GUESSES) - set(known):
         print(f'\n\033[93mSome cells are not fully constrained\033[0m')
         print('Cells:', unknown)
         for p in unknown:
@@ -173,30 +172,27 @@ COLS = 1 + max(c for _, c in GUESSES)
 
 RULES = {r.letter: r for r in map(Rule, rules_txt.split('\n'))}
 
+a1 = 0
+known = {}
+
 # Collect vert/horiz letter sequences
 SEQS_AT: dict[Pos, list[Sequence]] = defaultdict(list)
-sequences = []
 for pos, ch in STARTS.items():
-    if ch != '.':
-        for dir in [True, False]:
-            seq = extract_sequence(pos, dir)
-            sequences.append(seq)
-            for p in seq.coords:
-                SEQS_AT[p].append(seq)
+    for dir in [True, False]:
+        seq = extract_sequence(pos, dir)
+        for p in seq.coords:
+            SEQS_AT[p].append(seq)
 
-known = {}
-a1 = 0
-
-for seq in sequences:
-    value = int(''.join(GUESSES[p] for p in seq.coords))
-    if seq.rule.valid(value):
-        known.update({p: GUESSES[p] for p in seq.coords})
-    else:
-        a1 += value
+        # validate rule for part 1
+        value = int(''.join(GUESSES[p] for p in seq.coords))
+        if seq.rule.valid(value):
+            known.update({p: GUESSES[p] for p in seq.coords})
+        else:
+            a1 += value
 
 print('part1:', a1)
-print('part2:', a2 := part2(known))
-# print('part2:', a2 := part2({}))  # also possible
+print('part2:', a2 := part2(known))  # fix known values
+# print('part2:', a2 := part2({}))  # also solvable w/o any values
 
 assert a1 == 1401106
 assert a2 == 517533251
