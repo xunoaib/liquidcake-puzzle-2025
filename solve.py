@@ -95,14 +95,14 @@ def extract_sequence(start: Pos, vert: bool):
 
 
 def resolve_intersections(fixed: dict[Pos, str]):
-    changed = False
-    for p in sorted(set(GUESSES) - set(fixed)):
+    updated = False
+    for p in sorted(GUESSES.keys() - fixed.keys()):
         cands = cell_candidates(p, fixed)
         if len(cands) == 1:
-            fixed[p] = (v := cands.pop())
-            changed = True
-            print(f'Fixing {p} => {v} ({len(GUESSES)-len(fixed)} left)')
-    return changed
+            fixed[p] = next(iter(cands))
+            updated = True
+            print(f'Fixing {p} => {fixed[p]} ({len(GUESSES)-len(fixed)} left)')
+    return updated
 
 
 def cell_candidates(p: Pos, fixed: dict[Pos, str]):
@@ -121,25 +121,30 @@ def part2(fixed: dict[Pos, str]):
         print('Resolving...')
 
     if (unfixed := set(GUESSES) - set(fixed)):
-        print(f'\n\033[93mWarn: Some cells are not fully constrained\033[0m')
+        print(f'\n\033[93mSome cells are not fully constrained\033[0m')
         print('Cells:', unfixed)
         for p in unfixed:
             cands = cell_candidates(p, fixed)
             print(f'cell candidates @ {p} = {cands}')
-            fixed[p] = (v := cands.pop())
-            print(f'Arbitrarily fixing {p} => {v}')
+            fixed[p] = next(iter(cands))
+            print(f'Arbitrarily fixing {p} => {fixed[p]}')
 
-    out = ''.join(
-        ''.join(str(fixed[r, c]) for c in range(COLS)) + '\n'
-        for r in range(ROWS)
-    )
+    out = grid_to_str(fixed)
+    masked = re.sub(r'[0,2,4,6,8]', '.', out)
 
     print()
     print(out)
-    out = re.sub(r'[0,2,4,6,8]', '.', out)
-    print(out)
+    print()
+    print(masked)
+    print()
 
-    return sum(map(int, re.findall(r'\d+', out)))
+    return sum(map(int, re.findall(r'\d+', masked)))
+
+
+def grid_to_str(fixed: dict[Pos, str]):
+    return '\n'.join(
+        ''.join(fixed[r, c] for c in range(COLS)) for r in range(ROWS)
+    )
 
 
 if len(sys.argv) > 1:
