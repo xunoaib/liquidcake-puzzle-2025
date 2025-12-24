@@ -53,19 +53,18 @@ class Sequence:
                 out.append(s)
         return out
 
-    def new_candidates(self, fixed: dict[Pos, str]) -> list[str]:
+    def filter_candidates(self, fixed: dict[Pos, str]):
         assert self._candidates
-        vals = list(map(fixed.get, self.coords))
+        vals = [fixed.get(p) for p in self.coords]
         return [
-            n for n in self._candidates
-            if all(v == c for v, c in zip(vals, n) if v is not None)
+            c for c in self._candidates
+            if all(v is None or v == c for v, c in zip(vals, c))
         ]
 
     def candidates(self, fixed: dict[Pos, str]):
         if self._candidates is None:
             self._candidates = self.all_candidates()
-
-        self._candidates = self.new_candidates(fixed)
+        self._candidates = self.filter_candidates(fixed)
         return self._candidates
 
 
