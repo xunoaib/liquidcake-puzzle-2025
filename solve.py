@@ -100,16 +100,19 @@ def extract_sequence(start: Pos, vert: bool):
 
 def resolve_intersections(fixed: dict[Pos, str]):
     for p in sorted(set(G) - set(fixed)):
-        s0, s1 = SEQS_AT[p]
-        i0 = s0.coords.index(p)
-        i1 = s1.coords.index(p)
-        c0 = {str(c)[i0] for c in s0.candidates(fixed)}
-        c1 = {str(c)[i1] for c in s1.candidates(fixed)}
-        cands = c0 & c1
-
+        cands = intersection_candidates(p, fixed)
         if len(cands) == 1:
             fixed[p] = (v := cands.pop())
             print(f'Fixing {p} => {v} ({len(G)-len(fixed)} left)')
+
+
+def intersection_candidates(p: Pos, fixed: dict[Pos, str]):
+    s0, s1 = SEQS_AT[p]
+    i0 = s0.coords.index(p)
+    i1 = s1.coords.index(p)
+    c0 = {str(c)[i0] for c in s0.candidates(fixed)}
+    c1 = {str(c)[i1] for c in s1.candidates(fixed)}
+    return c0 & c1
 
 
 def part2(fixed: dict[Pos, str]):
@@ -120,36 +123,12 @@ def part2(fixed: dict[Pos, str]):
         if len(fixed) == count:
             break
 
-    unfixed = set(G) - set(fixed)
-    if unfixed:
-        print(
-            f'\n\033[93mWarn: Some cells are not fully constrained: {unfixed}\033[0m'
-        )
+    if (unfixed := set(G) - set(fixed)):
+        print(f'\n\033[93mWarn: Some cells are not fully constrained\033[0m')
+        print('Cells:', unfixed)
         for p in unfixed:
-            s0, s1 = SEQS_AT[p]
-            i0 = s0.coords.index(p)
-            i1 = s1.coords.index(p)
-            c0 = {str(c)[i0] for c in s0.candidates(fixed)}
-            c1 = {str(c)[i1] for c in s1.candidates(fixed)}
-            cands = c0 & c1
-
-            print()
-            print('s0 =', s0)
-            print('s1 =', s1)
-            print()
-            print(
-                's0 candidates: str index ', s0.coords.index(p), 'of',
-                s0.candidates(fixed)
-            )
-            print(
-                's1 candidates: str index ', s1.coords.index(p), 'of',
-                s1.candidates(fixed)
-            )
-            print()
-            print('s0 cell candidates:', c0)
-            print('s1 cell candidates:', c1)
-            print('final cell candidates =', cands)
-
+            cands = intersection_candidates(p, fixed)
+            print(f'cell candidates @ {p} = {cands}')
             fixed[p] = (v := cands.pop())
             print(f'Arbitrarily fixing {p} => {v}')
 
