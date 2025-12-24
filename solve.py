@@ -49,6 +49,11 @@ class Sequence:
 
     def all_candidates(self) -> list[str]:
         if not self._all:
+            if self.rule.type == 'square':
+                return list(exponent_candidates(len(self.coords), 2))
+            if self.rule.type == 'cube':
+                return list(exponent_candidates(len(self.coords), 3))
+
             for digits in product('0123456789', repeat=len(self.coords)):
                 if digits[0] == '0':
                     continue
@@ -70,6 +75,15 @@ class Sequence:
             self._all = self.all_candidates()
         self._all = self.filter_candidates(known)
         return self._all
+
+
+def exponent_candidates(ndigits, exponent):
+    lo = round((10**(ndigits - 1))**(1 / exponent))
+    hi = round((10**ndigits - 1)**(1 / exponent))
+    for k in range(lo, hi + 1):
+        v = k**exponent
+        if len(str(v)) == ndigits:
+            yield str(v)
 
 
 def is_power(x: int, b: int):
