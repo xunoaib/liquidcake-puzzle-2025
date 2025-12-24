@@ -57,18 +57,18 @@ class Sequence:
                 out.append(s)
         return out
 
-    def filter_candidates(self, fixed: dict[Pos, str]):
+    def filter_candidates(self, known: dict[Pos, str]):
         assert self._candidates
-        vals = [fixed.get(p) for p in self.coords]
+        vals = [known.get(p) for p in self.coords]
         return [
             c for c in self._candidates
             if all(v is None or v == c for v, c in zip(vals, c))
         ]
 
-    def candidates(self, fixed: dict[Pos, str]):
+    def candidates(self, known: dict[Pos, str]):
         if self._candidates is None:
             self._candidates = self.all_candidates()
-        self._candidates = self.filter_candidates(fixed)
+        self._candidates = self.filter_candidates(known)
         return self._candidates
 
 
@@ -94,42 +94,42 @@ def extract_sequence(start: Pos, vert: bool):
     return Sequence(letter, coords, RULES[letter])
 
 
-def resolve_intersections(fixed: dict[Pos, str]):
+def resolve_intersections(known: dict[Pos, str]):
     updated = False
-    for p in sorted(GUESSES.keys() - fixed.keys()):
-        cands = cell_candidates(p, fixed)
+    for p in sorted(GUESSES.keys() - known.keys()):
+        cands = cell_candidates(p, known)
         if len(cands) == 1:
-            fixed[p] = next(iter(cands))
+            known[p] = next(iter(cands))
             updated = True
-            print(f'Fixing {p} => {fixed[p]} ({len(GUESSES)-len(fixed)} left)')
+            print(f'Fixing {p} => {known[p]} ({len(GUESSES)-len(known)} left)')
     return updated
 
 
-def cell_candidates(p: Pos, fixed: dict[Pos, str]):
+def cell_candidates(p: Pos, known: dict[Pos, str]):
     s0, s1 = SEQS_AT[p]
     i0 = s0.index[p]
     i1 = s1.index[p]
-    c0 = {str(c)[i0] for c in s0.candidates(fixed)}
-    c1 = {str(c)[i1] for c in s1.candidates(fixed)}
+    c0 = {str(c)[i0] for c in s0.candidates(known)}
+    c1 = {str(c)[i1] for c in s1.candidates(known)}
     return c0 & c1
 
 
-def part2(fixed: dict[Pos, str]):
+def part2(known: dict[Pos, str]):
 
     print('Resolving...')
-    while resolve_intersections(fixed):
+    while resolve_intersections(known):
         print('Resolving...')
 
-    if (unfixed := set(GUESSES) - set(fixed)):
+    if (unknown := set(GUESSES) - set(known)):
         print(f'\n\033[93mSome cells are not fully constrained\033[0m')
-        print('Cells:', unfixed)
-        for p in unfixed:
-            cands = cell_candidates(p, fixed)
+        print('Cells:', unknown)
+        for p in unknown:
+            cands = cell_candidates(p, known)
             print(f'cell candidates @ {p} = {cands}')
-            fixed[p] = next(iter(cands))
-            print(f'Arbitrarily fixing {p} => {fixed[p]}')
+            known[p] = next(iter(cands))
+            print(f'Arbitrarily fixing {p} => {known[p]}')
 
-    out = grid_to_str(fixed)
+    out = grid_to_str(known)
     masked = re.sub(r'[0,2,4,6,8]', '.', out)
 
     print()
@@ -141,9 +141,9 @@ def part2(fixed: dict[Pos, str]):
     return sum(map(int, re.findall(r'\d+', masked)))
 
 
-def grid_to_str(fixed: dict[Pos, str]):
+def grid_to_str(grid: dict[Pos, str]):
     return '\n'.join(
-        ''.join(fixed[r, c] for c in range(COLS)) for r in range(ROWS)
+        ''.join(grid[r, c] for c in range(COLS)) for r in range(ROWS)
     )
 
 
@@ -184,18 +184,18 @@ for pos, ch in STARTS.items():
             for p in seq.coords:
                 SEQS_AT[p].append(seq)
 
-fixed = {}
+known = {}
 a1 = 0
 
 for seq in sequences:
     value = int(''.join(GUESSES[p] for p in seq.coords))
     if seq.rule.valid(value):
-        fixed.update({p: GUESSES[p] for p in seq.coords})
+        known.update({p: GUESSES[p] for p in seq.coords})
     else:
         a1 += value
 
 print('part1:', a1)
-print('part2:', a2 := part2(fixed))
+print('part2:', a2 := part2(known))
 # print('part2:', a2 := part2({}))  # also possible
 
 assert a1 == 1401106
